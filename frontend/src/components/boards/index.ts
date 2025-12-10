@@ -1,0 +1,10 @@
+// Board Components
+export { default as KanbanBoard } from './KanbanBoard.vue'
+export { default as KanbanCard } from './KanbanCard.vue'
+export { default as KanbanListHeader } from './KanbanListHeader.vue'
+export { default as BoardModal } from './BoardModal.vue'
+export { default as CardEditModal } from './CardEditModal.vue'
+export { default as LabelsPanel } from './LabelsPanel.vue'
+export { default as ArchivePanel } from './ArchivePanel.vue'
+export { default as AutomationsPanel } from './AutomationsPanel.vue'
+export { default as FiltersBar } from './FiltersBar.vue'
