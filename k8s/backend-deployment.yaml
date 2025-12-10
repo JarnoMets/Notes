@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: notes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: jarn/notes-backend:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: RUST_LOG
+          value: "info"
+        - name: DATABASE_URL
+          value: "postgres://postgresuser:postgrespwd@postgres.postgres.svc.cluster.local:5432/notesdb"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: notes-secrets
+              key: jwt-secret
+        - name: GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: notes-secrets
+              key: google-client-id
+              optional: true
+        - name: GOOGLE_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: notes-secrets
+              key: google-client-secret
+              optional: true
+        - name: APP_URL
+          value: "https://notes.jarnomets.com"
+        - name: MAX_USER_STORAGE_BYTES
+          valueFrom:
+            configMapKeyRef:
+              name: notes-storage-config
+              key: MAX_USER_STORAGE_BYTES
+        - name: MAX_FILE_SIZE_BYTES
+          valueFrom:
+            configMapKeyRef:
+              name: notes-storage-config
+              key: MAX_FILE_SIZE_BYTES
+        - name: ATTACHMENTS_PATH
+          valueFrom:
+            configMapKeyRef:
+              name: notes-storage-config
+              key: ATTACHMENTS_PATH
+        volumeMounts:
+        - name: attachments-storage
+          mountPath: /data/attachments
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      initContainers:
+      - name: wait-for-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z postgres.postgres.svc.cluster.local 5432; do echo waiting for db; sleep 2; done;']
+      volumes:
+      - name: attachments-storage
+        persistentVolumeClaim:
+          claimName: notes-attachments-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: notes
+  labels:
+    app: backend
+spec:
+  selector:
+    app: backend
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP

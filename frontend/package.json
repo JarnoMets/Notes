@@ -1,0 +1,43 @@
+{
+  "name": "notes-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tiptap/extension-color": "^3.11.1",
+    "@tiptap/extension-highlight": "^3.11.1",
+    "@tiptap/extension-image": "^3.11.1",
+    "@tiptap/extension-link": "^3.11.1",
+    "@tiptap/extension-placeholder": "^3.11.1",
+    "@tiptap/extension-table": "^3.11.1",
+    "@tiptap/extension-table-cell": "^3.11.1",
+    "@tiptap/extension-table-header": "^3.11.1",
+    "@tiptap/extension-table-row": "^3.11.1",
+    "@tiptap/extension-task-item": "^3.11.1",
+    "@tiptap/extension-task-list": "^3.11.1",
+    "@tiptap/extension-text-align": "^3.11.1",
+    "@tiptap/extension-text-style": "^3.11.1",
+    "@tiptap/extension-underline": "^3.11.1",
+    "@tiptap/pm": "^3.11.1",
+    "@tiptap/starter-kit": "^3.11.1",
+    "@tiptap/vue-3": "^3.11.1",
+    "@vueuse/core": "^10.7.0",
+    "axios": "^1.6.2",
+    "pinia": "^2.1.7",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.5",
+    "vuedraggable": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.0.0",
+    "vue-tsc": "^3.1.1"
+  }
+}

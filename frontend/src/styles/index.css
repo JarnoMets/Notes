@@ -1,0 +1,8 @@
+/* ===========================================
+   MAIN STYLES INDEX
+   Import all shared styles
+   =========================================== */
+
+@import './variables.css';
+@import './base.css';
+@import './components.css';
