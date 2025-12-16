@@ -82,6 +82,9 @@
         <button @click="applyFormat('ol')" title="Numbered List" class="toolbar-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><path d="M4 6h1v4"/><path d="M4 10h2"/><path d="M6 18H4c0-1 2-2 2-4s-1-2-2-2"/></svg>
         </button>
+        <button @click="insertTodo" title="Insert Todo" class="toolbar-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </button>
       </div>
 
       <!-- Block Elements -->
@@ -329,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import Icon from './Icon.vue'
 import { useNotesStore } from '../stores/notes'
@@ -562,6 +565,21 @@ function insertAttachmentLink(attachment: NoteAttachment) {
   content.value = `${content.value.slice(0, pos)}[attachment=${attachment.id}]${attachment.original_filename}[/attachment]${content.value.slice(pos)}`
   onInput()
   dialogs.value.attachmentLink.visible = false
+}
+
+function insertTodo() {
+  if (!textarea.value) return
+  const pos = textarea.value.selectionStart
+  // Insert an unchecked todo by default. Users can edit the text between tags.
+  content.value = `${content.value.slice(0, pos)}[todo=0]New task[/todo]${content.value.slice(pos)}`
+  onInput()
+  // Move cursor into the inserted task text
+  nextTick(() => {
+    const start = pos + `[todo=0]`.length
+    textarea.value!.selectionStart = start
+    textarea.value!.selectionEnd = start + 'New task'.length
+    textarea.value!.focus()
+  })
 }
 
 function undo() {
