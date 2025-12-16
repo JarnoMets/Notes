@@ -367,7 +367,7 @@ export function toggleTodoAtIndex(bbcode: string, targetIndex: number): string {
     let anyTodo = false
     for (const node of list) {
       if (Array.isArray(node.content)) {
-        const childResult = propagate(node.content)
+        propagate(node.content)
         // If the node itself is a todo, determine its checked state based on child todos
         if (node.type === 'todo') {
           anyTodo = true
