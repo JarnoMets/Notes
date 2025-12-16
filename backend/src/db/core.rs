@@ -205,6 +205,31 @@ impl Database {
         .execute(pool)
         .await?;
 
+        // Note revisions table (diff-based revisions) and current revision index on notes
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS note_revisions (
+                id TEXT PRIMARY KEY,
+                note_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                idx INTEGER NOT NULL,
+                forward_patch TEXT NOT NULL,
+                reverse_patch TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )"
+        )
+        .execute(pool)
+        .await?;
+
+        // Index for fast lookup by note and index
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_note_revisions_note_idx ON note_revisions (note_id, idx)")
+            .execute(pool)
+            .await;
+
+        // Add current_revision_index to notes (tracks the applied revision index)
+        let _ = sqlx::query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS current_revision_index INTEGER DEFAULT -1")
+            .execute(pool)
+            .await;
+
         // Boards table with user_id
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS boards (
