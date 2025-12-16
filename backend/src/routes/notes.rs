@@ -12,6 +12,7 @@ use crate::models::{
     NoteAttachment, NoteFolder, UpdateFolderRequest, UpdateNoteRequest,
     NoteRevision,
 };
+use diffy::create_patch;
 use crate::{require_auth, require_auth_or_query};
 
 use super::response::{
@@ -190,12 +191,14 @@ pub async fn create_note(
 
     match state.db.create_note(&note).await {
         Ok(note) => {
-            // create initial revision and set as current
-            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), note.title.clone(), note.description.clone(), note.content.clone());
+            // create initial diff-based revision and set as current (idx 0)
+            let forward = create_patch("", &note.content).to_string();
+            let reverse = create_patch(&note.content, "").to_string();
+            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), 0, forward, reverse);
             if let Err(e) = state.db.create_note_revision(&rev).await {
                 log::error!("Failed to create initial revision: {}", e);
             } else {
-                let _ = state.db.set_note_current_revision(&note.id, &rev.id, &user_id).await;
+                let _ = state.db.set_note_current_revision_index(&note.id, 0, &user_id).await;
             }
             created(note)
         }
@@ -213,6 +216,13 @@ pub async fn update_note(
     let id = path.into_inner();
     let folder_id = body.folder_id.clone().map(Some);
 
+    // Fetch existing note to compute diff
+    let existing = match state.db.get_note(&id, &user_id).await {
+        Ok(n) => n,
+        Err(DbError::NotFound) => return not_found("Note"),
+        Err(e) => return internal_error_logged("Failed to fetch existing note", e),
+    };
+
     match state
         .db
         .update_note(
@@ -229,12 +239,25 @@ pub async fn update_note(
         .await
     {
         Ok(note) => {
-            // Create a revision for this update
-            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), note.title.clone(), note.description.clone(), note.content.clone());
+            // Compute diff between existing and updated content and store as a new revision
+            let forward_patch = create_patch(&existing.content, &note.content).to_string();
+            let reverse_patch = create_patch(&note.content, &existing.content).to_string();
+
+            // Determine current index and prune any future revisions (invalidate redo stack)
+            let current_idx = match state.db.get_note_current_revision_index(&note.id, &user_id).await {
+                Ok(i) => i,
+                Err(_) => -1,
+            };
+            if let Err(e) = state.db.delete_revisions_after(&note.id, current_idx).await {
+                log::error!("Failed to prune future revisions: {}", e);
+            }
+
+            let next_idx = current_idx + 1;
+            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), next_idx, forward_patch, reverse_patch);
             if let Err(e) = state.db.create_note_revision(&rev).await {
                 log::error!("Failed to create revision for update: {}", e);
             } else {
-                let _ = state.db.set_note_current_revision(&note.id, &rev.id, &user_id).await;
+                let _ = state.db.set_note_current_revision_index(&note.id, next_idx, &user_id).await;
             }
             ok(note)
         }
@@ -265,22 +288,22 @@ pub async fn undo_revision(
 ) -> impl Responder {
     let user_id = require_auth!(req, state);
     let note_id = path.into_inner();
-
-    // Get revisions ordered newest->oldest
-    match state.db.get_note_revisions(&note_id, &user_id).await {
-        Ok(revs) => {
-            // Find current revision id from notes table (best-effort) by comparing notes content
-            // We'll pick the revision older than the current (i.e., second in list) if available
-            if revs.len() < 2 {
+    // Get current revision index
+    match state.db.get_note_current_revision_index(&note_id, &user_id).await {
+        Ok(current_idx) => {
+            if current_idx <= 0 {
                 return bad_request("No older revision available");
             }
-            let target = &revs[1];
-            match state.db.set_note_current_revision(&note_id, &target.id, &user_id).await {
-                Ok(()) => ok("ok"),
-                Err(e) => internal_error_logged("Failed to set revision", e),
+            let target_idx = current_idx - 1;
+            match state.db.get_revision_by_idx(&note_id, target_idx, &user_id).await {
+                Ok(rev) => match state.db.set_note_current_revision(&note_id, &rev.id, &user_id).await {
+                    Ok(()) => ok("ok"),
+                    Err(e) => internal_error_logged("Failed to set revision", e),
+                },
+                Err(_) => bad_request("No older revision found"),
             }
         }
-        Err(e) => internal_error_logged("Failed to fetch revisions", e),
+        Err(e) => internal_error_logged("Failed to fetch current revision index", e),
     }
 }
 
@@ -291,21 +314,27 @@ pub async fn redo_revision(
  ) -> impl Responder {
     let user_id = require_auth!(req, state);
     let note_id = path.into_inner();
-
-    // Get revisions ordered newest->oldest
-    match state.db.get_note_revisions(&note_id, &user_id).await {
-        Ok(revs) => {
-            if revs.is_empty() {
-                return bad_request("No revisions available");
-            }
-            // If there's a revision newer than current, pick the newest (index 0)
-            let target = &revs[0];
-            match state.db.set_note_current_revision(&note_id, &target.id, &user_id).await {
-                Ok(()) => ok("ok"),
-                Err(e) => internal_error_logged("Failed to set revision", e),
+    // Decide target based on current index and max idx
+    match state.db.get_note_current_revision_index(&note_id, &user_id).await {
+        Ok(current_idx) => {
+            match sqlx::query_scalar::<_, i32>("SELECT COALESCE(MAX(idx), -1) FROM note_revisions WHERE note_id = $1 AND user_id = $2").bind(&note_id).bind(&user_id).fetch_one(&state.db.pool).await {
+                Ok(max_idx) => {
+                    if current_idx >= max_idx {
+                        return bad_request("No newer revision available");
+                    }
+                    let target_idx = current_idx + 1;
+                    match state.db.get_revision_by_idx(&note_id, target_idx, &user_id).await {
+                        Ok(rev) => match state.db.set_note_current_revision(&note_id, &rev.id, &user_id).await {
+                            Ok(()) => ok("ok"),
+                            Err(e) => internal_error_logged("Failed to set revision", e),
+                        },
+                        Err(_) => bad_request("No newer revision found"),
+                    }
+                }
+                Err(e) => internal_error_logged("Failed to get max revision index", e),
             }
         }
-        Err(e) => internal_error_logged("Failed to fetch revisions", e),
+        Err(e) => internal_error_logged("Failed to fetch current revision index", e),
     }
 }
 

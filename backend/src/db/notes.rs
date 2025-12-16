@@ -1,5 +1,7 @@
 use super::{Database, DbError, DbResult};
 use crate::models::{Note, NoteAttachment, NoteFolder, NotesTree, NoteWithAttachments, NoteRevision};
+use diffy::{apply, Patch};
+use sqlx::Row;
 use chrono::Utc;
 
 impl Database {
@@ -240,14 +242,14 @@ impl Database {
 
     pub async fn create_note_revision(&self, revision: &NoteRevision) -> DbResult<NoteRevision> {
         sqlx::query(
-            "INSERT INTO note_revisions (id, note_id, user_id, title, description, content, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+            "INSERT INTO note_revisions (id, note_id, user_id, idx, forward_patch, reverse_patch, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
         )
         .bind(&revision.id)
         .bind(&revision.note_id)
         .bind(&revision.user_id)
-        .bind(&revision.title)
-        .bind(&revision.description)
-        .bind(&revision.content)
+        .bind(revision.idx)
+        .bind(&revision.forward_patch)
+        .bind(&revision.reverse_patch)
         .bind(&revision.created_at)
         .execute(&self.pool)
         .await?;
@@ -257,7 +259,7 @@ impl Database {
 
     pub async fn get_note_revisions(&self, note_id: &str, user_id: &str) -> DbResult<Vec<NoteRevision>> {
         let rows = sqlx::query_as::<_, NoteRevision>(
-            "SELECT id, note_id, user_id, title, description, content, created_at FROM note_revisions WHERE note_id = $1 AND user_id = $2 ORDER BY created_at DESC"
+            "SELECT id, note_id, user_id, idx, forward_patch, reverse_patch, created_at FROM note_revisions WHERE note_id = $1 AND user_id = $2 ORDER BY idx ASC"
         )
         .bind(note_id)
         .bind(user_id)
@@ -267,11 +269,57 @@ impl Database {
         Ok(rows)
     }
 
+    pub async fn delete_revisions_after(&self, note_id: &str, idx: i32) -> DbResult<()> {
+        sqlx::query("DELETE FROM note_revisions WHERE note_id = $1 AND idx > $2")
+            .bind(note_id)
+            .bind(idx)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_revision_by_idx(&self, note_id: &str, idx: i32, user_id: &str) -> DbResult<NoteRevision> {
+        let rev = sqlx::query_as::<_, NoteRevision>(
+            "SELECT id, note_id, user_id, idx, forward_patch, reverse_patch, created_at FROM note_revisions WHERE note_id = $1 AND idx = $2 AND user_id = $3"
+        )
+        .bind(note_id)
+        .bind(idx)
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(DbError::NotFound)?;
+
+        Ok(rev)
+    }
+
+    pub async fn get_note_current_revision_index(&self, note_id: &str, user_id: &str) -> DbResult<i32> {
+        let idx: Option<i32> = sqlx::query_scalar("SELECT current_revision_index FROM notes WHERE id = $1 AND user_id = $2")
+            .bind(note_id)
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(idx.unwrap_or(-1))
+    }
+
+    pub async fn set_note_current_revision_index(&self, note_id: &str, idx: i32, user_id: &str) -> DbResult<()> {
+        sqlx::query("UPDATE notes SET current_revision_index = $1, updated_at = $2 WHERE id = $3 AND user_id = $4")
+            .bind(idx)
+            .bind(Utc::now())
+            .bind(note_id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn set_note_current_revision(&self, note_id: &str, revision_id: &str, user_id: &str) -> DbResult<()> {
         // Update notes table to set content/title/description to the revision's values and store current_revision_id if column exists
-        // Fetch revision
+        // Fetch the target revision
         let rev = sqlx::query_as::<_, NoteRevision>(
-            "SELECT id, note_id, user_id, title, description, content, created_at FROM note_revisions WHERE id = $1 AND user_id = $2"
+            "SELECT id, note_id, user_id, idx, forward_patch, reverse_patch, created_at FROM note_revisions WHERE id = $1 AND user_id = $2"
         )
         .bind(revision_id)
         .bind(user_id)
@@ -279,22 +327,40 @@ impl Database {
         .await?
         .ok_or(DbError::NotFound)?;
 
-        // Update note to match revision
+        // Get current note content and current_revision_index
+        let row = sqlx::query("SELECT content, COALESCE(current_revision_index, -1) FROM notes WHERE id = $1 AND user_id = $2")
+            .bind(note_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let current_content: String = row.get(0);
+        let current_idx: i32 = row.get(1);
+
+        // Decide whether to apply forward or reverse patch
+        // If target idx < current_idx => undo (apply reverse_patch)
+        // Else => redo (apply forward_patch)
+        let patch_str = if rev.idx < current_idx {
+            rev.reverse_patch.clone()
+        } else {
+            rev.forward_patch.clone()
+        };
+
+        // Parse patch and apply using diffy::apply
+        let patch = Patch::from_str(&patch_str).map_err(|e| DbError::InvalidData(format!("Patch parse error: {}", e)))?;
+        let new_content = apply(&current_content, &patch).map_err(|e| DbError::InvalidData(format!("Patch apply error: {}", e)))?;
+
+        // Update note content and set current_revision_index
         sqlx::query(
-            "UPDATE notes SET title = $1, description = $2, content = $3, updated_at = $4 WHERE id = $5 AND user_id = $6"
+            "UPDATE notes SET content = $1, updated_at = $2, current_revision_index = $3 WHERE id = $4 AND user_id = $5"
         )
-        .bind(&rev.title)
-        .bind(&rev.description)
-        .bind(&rev.content)
+        .bind(&new_content)
         .bind(Utc::now())
+        .bind(rev.idx)
         .bind(note_id)
         .bind(user_id)
         .execute(&self.pool)
         .await?;
-
-        // Try to set current_revision_id if column exists (silently ignore failure)
-        let _ = sqlx::query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS current_revision_id TEXT").execute(&self.pool).await;
-        let _ = sqlx::query("UPDATE notes SET current_revision_id = $1 WHERE id = $2 AND user_id = $3").bind(revision_id).bind(note_id).bind(user_id).execute(&self.pool).await;
 
         Ok(())
     }
