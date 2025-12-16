@@ -38,6 +38,18 @@
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </button>
+        <button v-if="note" class="btn-icon" @click="handleUndo" title="Undo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 17L4 12l5-5"/>
+            <path d="M20 18a8 8 0 0 0-8-8H4"/>
+          </svg>
+        </button>
+        <button v-if="note" class="btn-icon" @click="handleRedo" title="Redo">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 17l5-5-5-5"/>
+            <path d="M4 18a8 8 0 0 0 8-8h8"/>
+          </svg>
+        </button>
         <div class="menu-wrapper" ref="menuWrapper">
           <button class="btn-icon" @click="toggleMenu" title="More options">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -501,6 +513,29 @@ async function downloadAttachment(attachment: NoteAttachment) {
     document.body.removeChild(a)
   } catch (error) {
     console.error('Failed to download attachment:', error)
+  }
+}
+
+async function handleUndo() {
+  if (!note.value) return
+  try {
+    await notesStore.undoNote(note.value.id)
+    // reload note
+    const fresh = await notesStore.fetchNote(note.value.id)
+    if (fresh) note.value = fresh
+  } catch (error) {
+    console.error('Undo failed', error)
+  }
+}
+
+async function handleRedo() {
+  if (!note.value) return
+  try {
+    await notesStore.redoNote(note.value.id)
+    const fresh = await notesStore.fetchNote(note.value.id)
+    if (fresh) note.value = fresh
+  } catch (error) {
+    console.error('Redo failed', error)
   }
 }
 
