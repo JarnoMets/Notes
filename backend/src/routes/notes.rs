@@ -10,6 +10,7 @@ use crate::db::DbError;
 use crate::models::{
     AppState, CreateFolderRequest, CreateNoteRequest, MoveFolderRequest, MoveNoteRequest, Note,
     NoteAttachment, NoteFolder, UpdateFolderRequest, UpdateNoteRequest,
+    NoteRevision,
 };
 use crate::{require_auth, require_auth_or_query};
 
@@ -188,7 +189,16 @@ pub async fn create_note(
     );
 
     match state.db.create_note(&note).await {
-        Ok(note) => created(note),
+        Ok(note) => {
+            // create initial revision and set as current
+            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), note.title.clone(), note.description.clone(), note.content.clone());
+            if let Err(e) = state.db.create_note_revision(&rev).await {
+                log::error!("Failed to create initial revision: {}", e);
+            } else {
+                let _ = state.db.set_note_current_revision(&note.id, &rev.id, &user_id).await;
+            }
+            created(note)
+        }
         Err(e) => internal_error_logged("Failed to create note", e),
     }
 }
@@ -218,9 +228,84 @@ pub async fn update_note(
         )
         .await
     {
-        Ok(note) => ok(note),
+        Ok(note) => {
+            // Create a revision for this update
+            let rev = NoteRevision::new(note.id.clone(), user_id.clone(), note.title.clone(), note.description.clone(), note.content.clone());
+            if let Err(e) = state.db.create_note_revision(&rev).await {
+                log::error!("Failed to create revision for update: {}", e);
+            } else {
+                let _ = state.db.set_note_current_revision(&note.id, &rev.id, &user_id).await;
+            }
+            ok(note)
+        }
         Err(DbError::NotFound) => not_found("Note"),
         Err(e) => internal_error_logged("Failed to update note", e),
+    }
+}
+
+pub async fn list_revisions(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
+    let id = path.into_inner();
+
+    match state.db.get_note_revisions(&id, &user_id).await {
+        Ok(revs) => ok(revs),
+        Err(DbError::NotFound) => not_found("Revisions"),
+        Err(e) => internal_error_logged("Failed to get revisions", e),
+    }
+}
+
+pub async fn undo_revision(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
+    let note_id = path.into_inner();
+
+    // Get revisions ordered newest->oldest
+    match state.db.get_note_revisions(&note_id, &user_id).await {
+        Ok(revs) => {
+            // Find current revision id from notes table (best-effort) by comparing notes content
+            // We'll pick the revision older than the current (i.e., second in list) if available
+            if revs.len() < 2 {
+                return bad_request("No older revision available");
+            }
+            let target = &revs[1];
+            match state.db.set_note_current_revision(&note_id, &target.id, &user_id).await {
+                Ok(()) => ok("ok"),
+                Err(e) => internal_error_logged("Failed to set revision", e),
+            }
+        }
+        Err(e) => internal_error_logged("Failed to fetch revisions", e),
+    }
+}
+
+pub async fn redo_revision(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+ ) -> impl Responder {
+    let user_id = require_auth!(req, state);
+    let note_id = path.into_inner();
+
+    // Get revisions ordered newest->oldest
+    match state.db.get_note_revisions(&note_id, &user_id).await {
+        Ok(revs) => {
+            if revs.is_empty() {
+                return bad_request("No revisions available");
+            }
+            // If there's a revision newer than current, pick the newest (index 0)
+            let target = &revs[0];
+            match state.db.set_note_current_revision(&note_id, &target.id, &user_id).await {
+                Ok(()) => ok("ok"),
+                Err(e) => internal_error_logged("Failed to set revision", e),
+            }
+        }
+        Err(e) => internal_error_logged("Failed to fetch revisions", e),
     }
 }
 

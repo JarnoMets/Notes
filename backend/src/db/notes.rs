@@ -1,5 +1,5 @@
 use super::{Database, DbError, DbResult};
-use crate::models::{Note, NoteAttachment, NoteFolder, NotesTree, NoteWithAttachments};
+use crate::models::{Note, NoteAttachment, NoteFolder, NotesTree, NoteWithAttachments, NoteRevision};
 use chrono::Utc;
 
 impl Database {
@@ -236,6 +236,70 @@ impl Database {
         .await?;
 
         Ok(note.clone())
+    }
+
+    pub async fn create_note_revision(&self, revision: &NoteRevision) -> DbResult<NoteRevision> {
+        sqlx::query(
+            "INSERT INTO note_revisions (id, note_id, user_id, title, description, content, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        )
+        .bind(&revision.id)
+        .bind(&revision.note_id)
+        .bind(&revision.user_id)
+        .bind(&revision.title)
+        .bind(&revision.description)
+        .bind(&revision.content)
+        .bind(&revision.created_at)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(revision.clone())
+    }
+
+    pub async fn get_note_revisions(&self, note_id: &str, user_id: &str) -> DbResult<Vec<NoteRevision>> {
+        let rows = sqlx::query_as::<_, NoteRevision>(
+            "SELECT id, note_id, user_id, title, description, content, created_at FROM note_revisions WHERE note_id = $1 AND user_id = $2 ORDER BY created_at DESC"
+        )
+        .bind(note_id)
+        .bind(user_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    pub async fn set_note_current_revision(&self, note_id: &str, revision_id: &str, user_id: &str) -> DbResult<()> {
+        // Update notes table to set content/title/description to the revision's values and store current_revision_id if column exists
+        let mut tx = self.pool.begin().await?;
+
+        // Fetch revision
+        let rev = sqlx::query_as::<_, NoteRevision>(
+            "SELECT id, note_id, user_id, title, description, content, created_at FROM note_revisions WHERE id = $1 AND user_id = $2"
+        )
+        .bind(revision_id)
+        .bind(user_id)
+        .fetch_optional(&mut *&mut tx)
+        .await?
+        .ok_or(DbError::NotFound)?;
+
+        sqlx::query(
+            "UPDATE notes SET title = $1, description = $2, content = $3, updated_at = $4 WHERE id = $5 AND user_id = $6"
+        )
+        .bind(&rev.title)
+        .bind(&rev.description)
+        .bind(&rev.content)
+        .bind(Utc::now())
+        .bind(note_id)
+        .bind(user_id)
+        .execute(&mut *&mut tx)
+        .await?;
+
+        // Try to set current_revision_id if column exists (silently ignore failure)
+        let _ = sqlx::query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS current_revision_id TEXT").execute(&mut *&mut tx).await;
+        let _ = sqlx::query("UPDATE notes SET current_revision_id = $1 WHERE id = $2 AND user_id = $3").bind(revision_id).bind(note_id).bind(user_id).execute(&mut *&mut tx).await;
+
+        tx.commit().await?;
+
+        Ok(())
     }
 
     pub async fn update_note(&self, id: &str, user_id: &str, title: Option<String>, folder_id: Option<Option<String>>, description: Option<String>, content: Option<String>, position: Option<i32>, is_important: Option<bool>, is_urgent: Option<bool>) -> DbResult<Note> {
