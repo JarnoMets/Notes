@@ -180,7 +180,7 @@ pub async fn create_note(
     };
 
     let note = Note::new(
-        user_id,
+        user_id.clone(),
         body.folder_id.clone(),
         body.title.clone(),
         body.description.clone().unwrap_or_default(),

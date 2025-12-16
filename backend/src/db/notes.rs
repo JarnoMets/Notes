@@ -269,18 +269,17 @@ impl Database {
 
     pub async fn set_note_current_revision(&self, note_id: &str, revision_id: &str, user_id: &str) -> DbResult<()> {
         // Update notes table to set content/title/description to the revision's values and store current_revision_id if column exists
-        let mut tx = self.pool.begin().await?;
-
         // Fetch revision
         let rev = sqlx::query_as::<_, NoteRevision>(
             "SELECT id, note_id, user_id, title, description, content, created_at FROM note_revisions WHERE id = $1 AND user_id = $2"
         )
         .bind(revision_id)
         .bind(user_id)
-        .fetch_optional(&mut *&mut tx)
+        .fetch_optional(&self.pool)
         .await?
         .ok_or(DbError::NotFound)?;
 
+        // Update note to match revision
         sqlx::query(
             "UPDATE notes SET title = $1, description = $2, content = $3, updated_at = $4 WHERE id = $5 AND user_id = $6"
         )
@@ -290,14 +289,12 @@ impl Database {
         .bind(Utc::now())
         .bind(note_id)
         .bind(user_id)
-        .execute(&mut *&mut tx)
+        .execute(&self.pool)
         .await?;
 
         // Try to set current_revision_id if column exists (silently ignore failure)
-        let _ = sqlx::query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS current_revision_id TEXT").execute(&mut *&mut tx).await;
-        let _ = sqlx::query("UPDATE notes SET current_revision_id = $1 WHERE id = $2 AND user_id = $3").bind(revision_id).bind(note_id).bind(user_id).execute(&mut *&mut tx).await;
-
-        tx.commit().await?;
+        let _ = sqlx::query("ALTER TABLE notes ADD COLUMN IF NOT EXISTS current_revision_id TEXT").execute(&self.pool).await;
+        let _ = sqlx::query("UPDATE notes SET current_revision_id = $1 WHERE id = $2 AND user_id = $3").bind(revision_id).bind(note_id).bind(user_id).execute(&self.pool).await;
 
         Ok(())
     }
