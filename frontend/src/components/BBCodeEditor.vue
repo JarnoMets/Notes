@@ -480,7 +480,8 @@ function insertLink() {
   if (!textarea.value) return
   const { text, url } = dialogs.value.link
   const pos = textarea.value.selectionStart
-  content.value = `${content.value.slice(0, pos)}[url=${url}]${text}[/url]${content.value.slice(pos)}`
+  // new-style attribute: href
+  content.value = `${content.value.slice(0, pos)}[url href="${url}"]${text}[/url]${content.value.slice(pos)}`
   onInput()
   dialogs.value.link.visible = false
 }
@@ -497,7 +498,8 @@ function insertImage() {
   if (!textarea.value) return
   const { url, alt } = dialogs.value.image
   const pos = textarea.value.selectionStart
-  content.value = `${content.value.slice(0, pos)}[img=${url}]${alt}[/img]${content.value.slice(pos)}`
+  // new-style attribute: src
+  content.value = `${content.value.slice(0, pos)}[img src="${url}"]${alt}[/img]${content.value.slice(pos)}`
   onInput()
   dialogs.value.image.visible = false
 }
@@ -535,7 +537,7 @@ function openNoteLinkDialog() {
 function insertNoteLink(note: Note) {
   if (!textarea.value) return
   const pos = textarea.value.selectionStart
-  content.value = `${content.value.slice(0, pos)}[note=${note.id}]${note.title}[/note]${content.value.slice(pos)}`
+  content.value = `${content.value.slice(0, pos)}[note id="${note.id}"]${note.title}[/note]${content.value.slice(pos)}`
   onInput()
   dialogs.value.noteLink.visible = false
 }
@@ -550,7 +552,7 @@ function openBoardLinkDialog() {
 function insertBoardLink(board: Board) {
   if (!textarea.value) return
   const pos = textarea.value.selectionStart
-  content.value = `${content.value.slice(0, pos)}[board=${board.id}]${board.name}[/board]${content.value.slice(pos)}`
+  content.value = `${content.value.slice(0, pos)}[board id="${board.id}"]${board.name}[/board]${content.value.slice(pos)}`
   onInput()
   dialogs.value.boardLink.visible = false
 }
@@ -562,7 +564,7 @@ function openAttachmentLinkDialog() {
 function insertAttachmentLink(attachment: NoteAttachment) {
   if (!textarea.value) return
   const pos = textarea.value.selectionStart
-  content.value = `${content.value.slice(0, pos)}[attachment=${attachment.id}]${attachment.original_filename}[/attachment]${content.value.slice(pos)}`
+  content.value = `${content.value.slice(0, pos)}[attachment id="${attachment.id}"]${attachment.original_filename}[/attachment]${content.value.slice(pos)}`
   onInput()
   dialogs.value.attachmentLink.visible = false
 }
@@ -682,9 +684,9 @@ function onEditorDrop(e: DragEvent) {
       let linkContent = ''
       
       if (data.type === 'note') {
-        linkContent = `[note=${data.id}]${data.name}[/note]`
+        linkContent = `[note id="${data.id}"]${data.name}[/note]`
       } else if (data.type === 'board') {
-        linkContent = `[board=${data.id}]${data.name}[/board]`
+        linkContent = `[board id="${data.id}"]${data.name}[/board]`
       } else {
         // Skip folders and other types
         return
