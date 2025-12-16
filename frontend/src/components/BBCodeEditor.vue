@@ -337,7 +337,7 @@ import { useRouter } from 'vue-router'
 import Icon from './Icon.vue'
 import { useNotesStore } from '../stores/notes'
 import { useExplorerStore } from '../stores/explorer'
-import { bbcodeToHtml, applyBBCodeFormat as applyBBCodeFormatUtil, isTagActive as isTagActiveUtil, insertBBCodeTag, toggleTodoAtIndex } from '../utils/bbcodeFormatter'
+import { bbcodeToHtml, applyBBCodeFormat as applyBBCodeFormatUtil, isTagActive as isTagActiveUtil, insertBBCodeTag, toggleTodoById } from '../utils/bbcodeFormatter'
 import NoteTreeView from './NoteTreeView.vue'
 import type { Note, Board, NoteAttachment } from '../types'
 
@@ -571,15 +571,32 @@ function insertTodo() {
   if (!textarea.value) return
   const pos = textarea.value.selectionStart
   // Insert an unchecked todo by default. Users can edit the text between tags.
-  content.value = `${content.value.slice(0, pos)}[todo=0]New task[/todo]${content.value.slice(pos)}`
+  // Generate a stable id for the todo
+  const id = generateTodoId()
+  content.value = `${content.value.slice(0, pos)}[todo id="${id}" checked="0"]New task[/todo]${content.value.slice(pos)}`
   onInput()
   // Move cursor into the inserted task text
   nextTick(() => {
-    const start = pos + `[todo=0]`.length
+    const start = pos + `[todo id="${id}" checked="0"]`.length
     textarea.value!.selectionStart = start
     textarea.value!.selectionEnd = start + 'New task'.length
     textarea.value!.focus()
   })
+}
+
+function generateTodoId(): string {
+  // Use crypto.randomUUID when available, otherwise fallback to a pseudo-random id
+  try {
+    // @ts-ignore - browser API
+    if (typeof crypto !== 'undefined' && typeof (crypto as any).randomUUID === 'function') {
+      return (crypto as any).randomUUID()
+    }
+  } catch (e) {
+    // fallthrough
+  }
+
+  // Fallback: timestamp + random
+  return `t-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}`
 }
 
 function undo() {
@@ -621,11 +638,11 @@ onMounted(async () => {
     router.push('/boards')
   }
   // Toggle todo callback used by rendered HTML checkboxes
-  ;(window as any).__toggleTodo = (paneId: string, idx: number) => {
+  ;(window as any).__toggleTodo = (paneId: string, todoId: string) => {
     try {
       if (paneId !== props.paneId) return
-      // Update the BBCode content by toggling the nth todo
-      content.value = toggleTodoAtIndex(content.value, Number(idx))
+      // Update the BBCode content by toggling the todo with given id
+      content.value = toggleTodoById(content.value, String(todoId))
       // Emit change and mark dirty/save
       onInput()
     } catch (err) {
