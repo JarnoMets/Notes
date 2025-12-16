@@ -76,16 +76,30 @@
         @update:content="handleContentUpdate"
         @update:isEditing="(val) => (isEditing = val)"
         @dirty="(isDirty) => emit('dirty', isDirty)"
+        @image-files-dropped="handleImageFilesDropped"
       />
 
       <!-- Attachments Panel -->
-      <div v-if="showAttachments && note" class="attachments-panel">
+      <div 
+        v-if="showAttachments && note" 
+        class="attachments-panel"
+        @dragover.prevent="onAttachmentsDragOver"
+        @dragleave="onAttachmentsDragLeave"
+        @drop.prevent="onAttachmentsDrop"
+        :class="{ 'drag-over': isDraggingOverAttachments }"
+      >
         <div class="attachments-header">
           <span>Attachments</span>
-          <label class="upload-btn" v-if="isEditing" title="Add attachment">
-            <Icon name="paperclip" :size="16" />
-            <input type="file" multiple @change="handleFileUpload" class="file-input" />
-          </label>
+          <div class="header-buttons">
+            <label class="upload-btn" v-if="isEditing" title="Add image">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <input type="file" accept="image/*" multiple @change="handleImageFileUpload" class="file-input" />
+            </label>
+            <label class="upload-btn" v-if="isEditing" title="Add attachment">
+              <Icon name="paperclip" :size="16" />
+              <input type="file" multiple @change="handleFileUpload" class="file-input" />
+            </label>
+          </div>
         </div>
         
         <div class="attachments-list" v-if="note.attachments && note.attachments.length > 0">
@@ -104,7 +118,7 @@
         </div>
         
         <div v-else class="attachments-empty">
-          {{ isEditing ? 'Drop files here or click Add' : 'No attachments' }}
+          {{ isEditing ? 'Drop files here or use buttons' : 'No attachments' }}
         </div>
       </div>
     </div>
@@ -190,6 +204,7 @@ const menuWrapper = ref<HTMLElement | null>(null)
 const titleInput = ref<HTMLInputElement | null>(null)
 const isDirty = ref(false)
 const previousContent = ref<string>('')
+const isDraggingOverAttachments = ref(false)
 
 // Delete note confirmation
 const deleteNoteModal = ref({
@@ -395,11 +410,81 @@ async function handleFileUpload(event: Event) {
   target.value = ''
 }
 
+async function handleImageFileUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || !note.value) return
+
+  try {
+    const response = await notesApi.uploadAttachments(note.value.id, Array.from(files))
+    if (note.value.attachments) {
+      note.value.attachments.push(...response.data)
+    } else {
+      note.value.attachments = response.data
+    }
+    notesStore.invalidateNoteCache(note.value.id)
+  } catch (error) {
+    console.error('Failed to upload images:', error)
+  }
+  
+  target.value = ''
+}
+
 function insertImageFromAttachment(attachment: NoteAttachment) {
   // This would need to be passed to BBCodeEditor to insert image
   // For now, copy URL to clipboard
   const url = notesApi.getAttachmentUrl(attachment.id)
   navigator.clipboard.writeText(`[img=${url}]${attachment.original_filename}[/img]`)
+}
+
+function onAttachmentsDragOver(event: DragEvent) {
+  event.preventDefault()
+  isDraggingOverAttachments.value = true
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+function onAttachmentsDragLeave() {
+  isDraggingOverAttachments.value = false
+}
+
+async function onAttachmentsDrop(event: DragEvent) {
+  event.preventDefault()
+  isDraggingOverAttachments.value = false
+  
+  if (!isEditing.value || !note.value) return
+  
+  const files = event.dataTransfer?.files
+  if (!files || files.length === 0) return
+  
+  try {
+    const response = await notesApi.uploadAttachments(note.value.id, Array.from(files))
+    if (note.value.attachments) {
+      note.value.attachments.push(...response.data)
+    } else {
+      note.value.attachments = response.data
+    }
+    notesStore.invalidateNoteCache(note.value.id)
+  } catch (error) {
+    console.error('Failed to upload files:', error)
+  }
+}
+
+async function handleImageFilesDropped(files: File[]) {
+  if (!note.value) return
+  
+  try {
+    const response = await notesApi.uploadAttachments(note.value.id, Array.from(files))
+    if (note.value.attachments) {
+      note.value.attachments.push(...response.data)
+    } else {
+      note.value.attachments = response.data
+    }
+    notesStore.invalidateNoteCache(note.value.id)
+  } catch (error) {
+    console.error('Failed to upload images:', error)
+  }
 }
 
 async function downloadAttachment(attachment: NoteAttachment) {
@@ -1011,6 +1096,12 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.attachments-panel.drag-over {
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-secondary));
+  border-left: 2px solid var(--accent);
 }
 
 .attachments-header {
@@ -1022,6 +1113,11 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.header-buttons {
+  display: flex;
+  gap: 0.5rem;
 }
 
 .upload-btn {

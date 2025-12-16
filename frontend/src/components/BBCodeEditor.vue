@@ -105,6 +105,9 @@
         <button @click="openImageDialog" title="Add Image" class="toolbar-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         </button>
+        <button v-if="isEditing" @click="openImageUploadDialog" title="Upload Image" class="toolbar-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
         <button @click="openTableDialog" title="Insert Table" class="toolbar-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>
         </button>
@@ -153,8 +156,10 @@
         class="bbcode-textarea"
         @input="onInput"
         @keydown="onKeyDown"
-        @dragover="onDragOver"
-        @drop="onDrop"
+        @dragover="onEditorDragOver"
+        @dragleave="onEditorDragLeave"
+        @drop="onEditorDrop"
+        :class="{ 'drag-over': isDraggingOverEditor }"
         placeholder="Enter your note content using BBCode formatting..."
       ></textarea>
 
@@ -201,6 +206,32 @@
             <input v-model="dialogs.image.alt" type="text" placeholder="Image description" />
           </div>
           <button @click="insertImage" class="btn btn-primary">Insert</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Image Upload Dialog -->
+    <div v-if="dialogs.imageUpload.visible" class="modal-overlay" @click.self="dialogs.imageUpload.visible = false">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Upload Image</h3>
+          <button class="modal-close" @click="dialogs.imageUpload.visible = false">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Select Image</label>
+            <input 
+              ref="imageUploadInput"
+              type="file" 
+              accept="image/*" 
+              @change="handleImageUpload"
+              class="file-input"
+            />
+          </div>
+          <div v-if="dialogs.imageUpload.uploading" class="upload-status">
+            Uploading...
+          </div>
+          <button v-else @click="() => imageUploadInput?.click()" class="btn btn-primary">Choose Image</button>
         </div>
       </div>
     </div>
@@ -318,6 +349,7 @@ const emit = defineEmits<{
   (e: 'update:content', value: string): void
   (e: 'update:isEditing', value: boolean): void
   (e: 'dirty', isDirty: boolean): void
+  (e: 'image-files-dropped', files: File[]): void
 }>()
 
 const router = useRouter()
@@ -327,16 +359,19 @@ const explorerStore = useExplorerStore()
 const textarea = ref<HTMLTextAreaElement | null>(null)
 const colorInput = ref<HTMLInputElement | null>(null)
 const highlightInput = ref<HTMLInputElement | null>(null)
+const imageUploadInput = ref<HTMLInputElement | null>(null)
 
 const content = ref(props.initialContent)
 const isEditing = ref(props.isEditing)
 const history = ref<string[]>([props.initialContent])
 const historyIndex = ref(0)
 const saveTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+const isDraggingOverEditor = ref(false)
 
 const dialogs = ref({
   link: { visible: false, text: '', url: '' },
   image: { visible: false, url: '', alt: '' },
+  imageUpload: { visible: false, uploading: false },
   table: { visible: false, rows: 3, cols: 3 },
   noteLink: { visible: false, search: '' },
   boardLink: { visible: false },
@@ -449,6 +484,10 @@ function insertLink() {
 
 function openImageDialog() {
   dialogs.value.image = { visible: true, url: '', alt: '' }
+}
+
+function openImageUploadDialog() {
+  dialogs.value.imageUpload = { visible: true, uploading: false }
 }
 
 function insertImage() {
@@ -565,44 +604,80 @@ onMounted(async () => {
   }
 })
 
-function onDragOver(e: DragEvent) {
+function onEditorDragOver(e: DragEvent) {
   e.preventDefault()
+  isDraggingOverEditor.value = true
   const isExplorer = e.dataTransfer?.types?.includes('application/x-explorer-item')
-  if (isExplorer) {
-    e.dataTransfer!.dropEffect = 'link'
+  const isFiles = e.dataTransfer?.types?.includes('Files')
+  if (isExplorer || isFiles) {
+    e.dataTransfer!.dropEffect = isFiles ? 'copy' : 'link'
   }
 }
 
-function onDrop(e: DragEvent) {
+function onEditorDragLeave() {
+  isDraggingOverEditor.value = false
+}
+
+function onEditorDrop(e: DragEvent) {
   e.preventDefault()
+  isDraggingOverEditor.value = false
   
   // Try to get explorer item drag data (from tree)
   let dragData = e.dataTransfer?.getData('application/x-explorer-item')
   
-  if (!dragData) return
-  
-  try {
-    const data = JSON.parse(dragData)
-    
-    if (!textarea.value) return
-    
-    const pos = textarea.value.selectionStart
-    let linkContent = ''
-    
-    if (data.type === 'note') {
-      linkContent = `[note=${data.id}]${data.name}[/note]`
-    } else if (data.type === 'board') {
-      linkContent = `[board=${data.id}]${data.name}[/board]`
-    } else {
-      // Skip folders and other types
-      return
+  if (dragData) {
+    try {
+      const data = JSON.parse(dragData)
+      
+      if (!textarea.value) return
+      
+      const pos = textarea.value.selectionStart
+      let linkContent = ''
+      
+      if (data.type === 'note') {
+        linkContent = `[note=${data.id}]${data.name}[/note]`
+      } else if (data.type === 'board') {
+        linkContent = `[board=${data.id}]${data.name}[/board]`
+      } else {
+        // Skip folders and other types
+        return
+      }
+      
+      content.value = `${content.value.slice(0, pos)}${linkContent}${content.value.slice(pos)}`
+      onInput()
+    } catch (error) {
+      console.error('Failed to parse drag data:', error)
     }
-    
-    content.value = `${content.value.slice(0, pos)}${linkContent}${content.value.slice(pos)}`
-    onInput()
-  } catch (error) {
-    console.error('Failed to parse drag data:', error)
+  } else {
+    // Try to handle file drops
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      // Handle image files
+      const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'))
+      if (imageFiles.length > 0) {
+        handleDroppedImages(imageFiles)
+      }
+    }
   }
+}
+
+async function handleDroppedImages(files: File[]) {
+  if (!textarea.value) return
+  
+  // We need a note ID to upload attachments
+  // This should be passed from parent or we need to emit an event
+  // For now, we'll emit an event to the parent component
+  emit('image-files-dropped', files)
+}
+
+async function handleImageUpload(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (!files || files.length === 0) return
+  
+  emit('image-files-dropped', Array.from(files))
+  dialogs.value.imageUpload.visible = false
+  target.value = ''
 }
 </script>
 
@@ -724,6 +799,12 @@ function onDrop(e: DragEvent) {
   white-space: pre-wrap;
   word-wrap: break-word;
   tab-size: 2;
+  transition: background-color 0.2s;
+}
+
+.bbcode-textarea.drag-over {
+  background-color: color-mix(in srgb, var(--accent) 5%, var(--bg-primary));
+  border: 2px dashed var(--accent);
 }
 
 .bbcode-textarea::placeholder {
@@ -1030,6 +1111,18 @@ function onDrop(e: DragEvent) {
 .form-group input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-status {
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  text-align: center;
 }
 
 .btn {
