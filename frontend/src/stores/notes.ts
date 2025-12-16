@@ -232,6 +232,29 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
+  async function undoNote(id: string) {
+    try {
+      const response = await notesApi.undo(id)
+      // Refresh note cache
+      invalidateNoteCache(id)
+      return response.data
+    } catch (error) {
+      console.error('Failed to undo note:', error)
+      throw error
+    }
+  }
+
+  async function redoNote(id: string) {
+    try {
+      const response = await notesApi.redo(id)
+      invalidateNoteCache(id)
+      return response.data
+    } catch (error) {
+      console.error('Failed to redo note:', error)
+      throw error
+    }
+  }
+
   async function toggleNoteImportance(id: string) {
     const note = notes.value.find(n => n.id === id)
     if (!note) return
@@ -550,6 +573,8 @@ export const useNotesStore = defineStore('notes', () => {
     updateNote,
     toggleNoteImportance,
     invalidateNoteCache,
+    undoNote,
+    redoNote,
     openNote,
     openNoteAtIndex,
     openNoteInNewSplit,

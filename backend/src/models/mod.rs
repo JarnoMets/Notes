@@ -11,6 +11,7 @@ mod label;
 mod automation;
 mod settings;
 mod reminder;
+mod note_revision;
 
 // Re-export all models for convenient access
 pub use user::*;
@@ -22,6 +23,7 @@ pub use label::*;
 pub use automation::*;
 pub use settings::*;
 pub use reminder::*;
+pub use note_revision::*;
 
 use crate::db::Database;
 use std::sync::Arc;

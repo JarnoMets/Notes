@@ -16,6 +16,10 @@ export const notesApi = {
   update: (id: string, data: { title?: string; folder_id?: string | null; description?: string; content?: string; position?: number; is_important?: boolean; is_urgent?: boolean }) => api.put(`/notes/${id}`, data),
   delete: (id: string) => api.delete(`/notes/${id}`),
   move: (id: string, data: { folder_id: string | null; position: number }) => api.post(`/notes/${id}/move`, data),
+  // Revisions / undo-redo
+  listRevisions: (noteId: string) => api.get(`/notes/${noteId}/revisions`),
+  undo: (noteId: string) => api.post(`/notes/${noteId}/revisions/undo`),
+  redo: (noteId: string) => api.post(`/notes/${noteId}/revisions/redo`),
   // Attachments
   uploadAttachment: (noteId: string, file: File) => {
     const formData = new FormData()
