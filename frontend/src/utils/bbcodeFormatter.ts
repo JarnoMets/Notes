@@ -173,8 +173,10 @@ export class BBCodeParser {
  */
 export class BBCodeRenderer {
   private nodeMap: Record<string, (node: BBCodeNode) => string>
+  private todoCounter: number
 
   constructor() {
+    this.todoCounter = 0
     this.nodeMap = {
       text: (node) => {
         const escaped = this.escapeHtml(node.content as string)
@@ -247,6 +249,24 @@ export class BBCodeRenderer {
         const displayText = attachmentTitle ? `[${attachmentTitle}]` : `[Attachment: ${attachmentId}]`
         return `<a href="javascript:void(0)" class="bbcode-link bbcode-attachment-link" data-attachment-id="${attachmentId}" onclick="window.__openAttachment?.('${attachmentId}'); return false">${displayText}</a>`
       },
+      todo: (node) => {
+        // assign an index for this todo in preorder traversal
+        const idx = this.todoCounter++
+        // Determine checked state from attrs.value which may be '1' or 'checked=1'
+        const raw = node.attrs?.value || ''
+        let checked = false
+        if (/^\s*checked=(?:"|'|)?1(?:"|'|)?\s*$/i.test(raw)) checked = true
+        else if (/^\s*1\s*$/.test(raw)) checked = true
+
+        // Render inner content
+        const inner = this.renderContent(node.content)
+
+        // Use paneId if attached to renderer (set by bbcodeToHtml)
+        const paneId = (this as any).paneId || ''
+
+        // Checkbox calls window.__toggleTodo with paneId and index
+        return `<ul class="task-list"><li class="task-item" data-checked="${checked ? 'true' : 'false'}" data-idx="${idx}"><label><input type="checkbox" ${checked ? 'checked' : ''} onclick="window.__toggleTodo && window.__toggleTodo('${paneId}', ${idx}); event.stopPropagation();" /></label><div>${inner}</div></li></ul>`
+      },
       ul: (node) => `<ul class="bbcode-list">${this.renderContent(node.content)}</ul>`,
       ol: (node) => `<ol class="bbcode-list">${this.renderContent(node.content)}</ol>`,
       li: (node) => `<li>${this.renderContent(node.content)}</li>`,
@@ -284,6 +304,8 @@ export class BBCodeRenderer {
   }
 
   render(nodes: BBCodeNode[]): string {
+    // reset todo counter before a fresh render so indices are deterministic
+    this.todoCounter = 0
     return nodes.map((node) => this.renderNode(node)).join('')
   }
 }
@@ -291,11 +313,105 @@ export class BBCodeRenderer {
 /**
  * Convert BBCode string to HTML
  */
-export function bbcodeToHtml(bbcode: string): string {
+export function bbcodeToHtml(bbcode: string, options?: { paneId?: string }): string {
   const parser = new BBCodeParser(bbcode)
   const nodes = parser.parse()
   const renderer = new BBCodeRenderer()
+  // Pass paneId so todo checkboxes can call back to the correct editor instance
+  ;(renderer as any).paneId = options?.paneId
   return renderer.render(nodes)
+}
+
+/**
+ * Toggle the Nth todo (preorder) in the BBCode and propagate parent states.
+ * Returns the new BBCode string.
+ */
+export function toggleTodoAtIndex(bbcode: string, targetIndex: number): string {
+  const parser = new BBCodeParser(bbcode)
+  const nodes = parser.parse()
+
+  let counter = 0
+
+  // Find and toggle the nth todo node
+  function toggleNodeList(list: BBCodeNode[]): boolean {
+    for (const node of list) {
+      if (node.type === 'todo') {
+        if (counter === targetIndex) {
+          // Toggle checked state stored in attrs.value or attrs.checked
+          const raw = node.attrs?.value || ''
+          let checked = false
+          if (/^\s*checked=(?:"|'|)?1(?:"|'|)?\s*$/i.test(raw)) checked = true
+          else if (/^\s*1\s*$/.test(raw)) checked = true
+          // Toggle
+          const newChecked = checked ? '0' : '1'
+          // Prefer to store as checked=0/1
+          node.attrs = node.attrs || {}
+          node.attrs.value = `checked=${newChecked}`
+          return true
+        }
+        counter++
+      }
+      // Recurse into children
+      if (Array.isArray(node.content)) {
+        const found = toggleNodeList(node.content)
+        if (found) return true
+      }
+    }
+    return false
+  }
+
+  toggleNodeList(nodes)
+
+  // After toggling, propagate parent check states: a todo is checked if ALL child todo nodes are checked
+  function propagate(list: BBCodeNode[]): boolean {
+    let anyTodo = false
+    for (const node of list) {
+      if (Array.isArray(node.content)) {
+        propagate(node.content)
+        // If the node itself is a todo, determine its checked state based on child todos
+        if (node.type === 'todo') {
+          anyTodo = true
+          // Find all child todo nodes under this node
+          const childTodos: BBCodeNode[] = []
+          function collectTodos(nList: BBCodeNode[]) {
+            for (const n of nList) {
+              if (n.type === 'todo') childTodos.push(n)
+              if (Array.isArray(n.content)) collectTodos(n.content)
+            }
+          }
+          collectTodos(node.content)
+
+          if (childTodos.length > 0) {
+            const allChecked = childTodos.every(t => {
+              const raw = t.attrs?.value || ''
+              if (/^\s*checked=(?:"|'|)?1(?:"|'|)?\s*$/i.test(raw)) return true
+              if (/^\s*1\s*$/.test(raw)) return true
+              return false
+            })
+            node.attrs = node.attrs || {}
+            node.attrs.value = `checked=${allChecked ? '1' : '0'}`
+          }
+        }
+      }
+    }
+    return anyTodo
+  }
+
+  propagate(nodes)
+
+  // Convert nodes back to BBCode
+  function nodesToBBCode(list: BBCodeNode[]): string {
+    return list.map(node => nodeToBBCode(node)).join('')
+  }
+
+  function nodeToBBCode(node: BBCodeNode): string {
+    if (node.type === 'text') return (node.content as string) || ''
+    const attrs = node.attrs?.value ? `=${node.attrs.value}` : ''
+    const inner = Array.isArray(node.content) ? nodesToBBCode(node.content) : (node.content as string || '')
+    return `[${node.type}${attrs}]${inner}[/${node.type}]`
+  }
+
+  return nodesToBBCode(nodes)
 }
 
 /**
