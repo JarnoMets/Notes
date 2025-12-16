@@ -80,6 +80,9 @@ async fn main() -> std::io::Result<()> {
                     .route("/notes/{id}", web::put().to(routes::notes::update_note))
                     .route("/notes/{id}", web::delete().to(routes::notes::delete_note))
                     .route("/notes/{id}/move", web::post().to(routes::notes::move_note))
+                    .route("/notes/{id}/revisions", web::get().to(routes::notes::list_revisions))
+                    .route("/notes/{id}/revisions/undo", web::post().to(routes::notes::undo_revision))
+                    .route("/notes/{id}/revisions/redo", web::post().to(routes::notes::redo_revision))
                     // Note folders routes
                     .route("/folders", web::get().to(routes::notes::get_folders))
                     .route("/folders", web::post().to(routes::notes::create_folder))
