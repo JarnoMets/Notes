@@ -89,6 +89,8 @@
         @update:isEditing="(val) => (isEditing = val)"
         @dirty="(isDirty) => emit('dirty', isDirty)"
         @image-files-dropped="handleImageFilesDropped"
+        @request-undo="handleUndo"
+        @request-redo="handleRedo"
       />
 
       <!-- Attachments Panel -->
