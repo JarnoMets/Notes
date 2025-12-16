@@ -334,7 +334,7 @@ import { useRouter } from 'vue-router'
 import Icon from './Icon.vue'
 import { useNotesStore } from '../stores/notes'
 import { useExplorerStore } from '../stores/explorer'
-import { bbcodeToHtml, applyBBCodeFormat as applyBBCodeFormatUtil, isTagActive as isTagActiveUtil, insertBBCodeTag } from '../utils/bbcodeFormatter'
+import { bbcodeToHtml, applyBBCodeFormat as applyBBCodeFormatUtil, isTagActive as isTagActiveUtil, insertBBCodeTag, toggleTodoAtIndex } from '../utils/bbcodeFormatter'
 import NoteTreeView from './NoteTreeView.vue'
 import type { Note, Board, NoteAttachment } from '../types'
 
@@ -378,7 +378,7 @@ const dialogs = ref({
   attachmentLink: { visible: false },
 })
 
-const renderedHtml = computed(() => bbcodeToHtml(content.value))
+const renderedHtml = computed(() => bbcodeToHtml(content.value, { paneId: props.paneId }))
 
 const currentNoteAttachments = computed(() => props.attachments || [])
 
@@ -601,6 +601,18 @@ onMounted(async () => {
   ;(window as any).__openBoard = (boardId: string) => {
     localStorage.setItem('selectedBoardId', boardId)
     router.push('/boards')
+  }
+  // Toggle todo callback used by rendered HTML checkboxes
+  ;(window as any).__toggleTodo = (paneId: string, idx: number) => {
+    try {
+      if (paneId !== props.paneId) return
+      // Update the BBCode content by toggling the nth todo
+      content.value = toggleTodoAtIndex(content.value, Number(idx))
+      // Emit change and mark dirty/save
+      onInput()
+    } catch (err) {
+      console.error('Failed to toggle todo:', err)
+    }
   }
 })
 
