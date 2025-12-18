@@ -80,6 +80,8 @@
         @image-files-dropped="handleImageFilesDropped"
         @request-undo="handleUndo"
         @request-redo="handleRedo"
+        @request-save="saveNote"
+        @request-done="() => { saveNote(); isEditing = false }"
       />
 
       <!-- Attachments Panel -->
