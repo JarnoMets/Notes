@@ -133,6 +133,16 @@
         @drop.prevent="onBoardsRootDrop"
         :class="{ 'root-drop-active': isBoardsRootDropTarget }"
       >
+        <!-- Collapsible Boards Section -->
+        <div class="section-header" @click="boardsSectionExpanded = !boardsSectionExpanded">
+          <span class="expand-toggle">
+            <Icon :name="boardsSectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+          </span>
+          <Icon name="board" :size="14" />
+          <span class="section-title">Boards</span>
+          <span class="section-count">{{ explorerStore.boardsList.length }}</span>
+        </div>
+        <div v-if="boardsSectionExpanded">
           <!-- Favorites Section (Boards) -->
           <div v-if="explorerStore.favoritesList.some(i => i.type === 'board' || i.type === 'board-folder')" class="favorites-section">
             <div 
@@ -165,7 +175,7 @@
               />
             </div>
           </div>
-        <template v-if="explorerStore.boardsList.length > 0">
+          <template v-if="explorerStore.boardsList.length > 0">
           <ExplorerTreeNode
             v-for="item in explorerStore.boardsList"
             :key="item.id"
@@ -190,6 +200,7 @@
             Drop here to move to root
           </div>
         </template>
+        </div>
         <div v-else class="tree-empty">
           <Icon name="board" :size="32" />
           <span>No boards yet</span>
@@ -216,6 +227,9 @@ const props = defineProps<{
 const explorerStore = useExplorerStore()
 const router = useRouter()
 const route = useRoute()
+
+// Control expansion state for the boards section (collapsed by default)
+const boardsSectionExpanded = ref(false)
 
 const activeTab = ref<'notes' | 'boards'>(props.defaultTab || 'notes')
 
