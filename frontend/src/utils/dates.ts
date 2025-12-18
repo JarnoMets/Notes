@@ -51,7 +51,21 @@ export function toApiIso(value?: string): string | undefined {
     value = `${value}T18:00`
   }
 
-  // If value looks like YYYY-MM-DDTHH:mm (no offset), Date will interpret as local time — that's desired.
+  // If value looks like YYYY-MM-DDTHH:mm (no offset), parse components explicitly
+  const localMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/)
+  if (localMatch) {
+    const y = parseInt(localMatch[1], 10)
+    const m = parseInt(localMatch[2], 10) - 1
+    const d = parseInt(localMatch[3], 10)
+    const hh = parseInt(localMatch[4], 10)
+    const mm = parseInt(localMatch[5], 10)
+    // Construct Date using local components to avoid ambiguity between engines
+    const dt = new Date(y, m, d, hh, mm, 0, 0)
+    if (isNaN(dt.getTime())) return undefined
+    return dt.toISOString()
+  }
+
+  // Fallback: let the Date parser handle timezone-aware strings
   const d = new Date(value)
   if (isNaN(d.getTime())) return undefined
   return d.toISOString()
