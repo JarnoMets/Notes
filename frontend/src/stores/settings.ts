@@ -341,11 +341,12 @@ export const useSettingsStore = defineStore('settings', () => {
         // Build a UTC timestamp from the timezone-formatted parts
         const tzAsUtc = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, tzSecond)
 
-        // The difference between our initial UTC guess and the tz-formatted UTC gives the offset
-        const offset = utcForGiven - tzAsUtc
-
-        // Subtract offset to obtain the correct instant for the given local components
-        const targetTimestamp = utcForGiven - offset
+        // The tzAsUtc is the UTC timestamp corresponding to the formatted parts we got
+        // (i.e. the UTC instant that, when formatted in the target timezone, yields those parts).
+        // To get the correct UTC instant for the original local components we started with
+        // we compute: target = 2*utcForGiven - tzAsUtc. This derives from correcting the
+        // initial UTC guess by the difference between the guessed and actual timezone mapping.
+        const targetTimestamp = 2 * utcForGiven - tzAsUtc
         return { date: new Date(targetTimestamp), allDay }
       } catch (e) {
         // If timezone parsing fails, treat as local time
