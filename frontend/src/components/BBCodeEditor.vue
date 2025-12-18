@@ -355,6 +355,8 @@ const emit = defineEmits<{
   (e: 'image-files-dropped', files: File[]): void
   (e: 'request-undo'): void
   (e: 'request-redo'): void
+  (e: 'request-save'): void
+  (e: 'request-done'): void
 }>()
 
 const router = useRouter()
@@ -431,6 +433,21 @@ function onKeyDown(event: KeyboardEvent) {
       case 'y':
         event.preventDefault()
         redo()
+        break
+      case 's':
+        // Save (Ctrl/Cmd+S)
+        event.preventDefault()
+        emit('request-save')
+        break
+      case 'k':
+        // Insert link (Ctrl/Cmd+K)
+        event.preventDefault()
+        openLinkDialog()
+        break
+      case 'enter':
+        // Finish editing (Ctrl/Cmd+Enter)
+        event.preventDefault()
+        emit('request-done')
         break
     }
   }
