@@ -681,6 +681,7 @@ import ExplorerTree from '../components/ExplorerTree.vue'
 import Icon from '../components/Icon.vue'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import PromptModal from '../components/PromptModal.vue'
+import { toApiIso, normalizeForInput, toDatetimeLocal } from '../utils/dates'
 
 const router = useRouter()
 const explorerStore = useExplorerStore()
@@ -1300,7 +1301,12 @@ async function addCard() {
   if (!newCard.value.title.trim()) return
   
   try {
-    await cardsApi.create(selectedListId.value, newCard.value)
+    // Ensure due_date is formatted as ISO with timezone for backend
+    const payload: any = { ...newCard.value }
+    if (payload.due_date) {
+      payload.due_date = toApiIso(payload.due_date)
+    }
+    await cardsApi.create(selectedListId.value, payload)
     showAddCardModal.value = false
     newCard.value = { title: '', description: '' }
     if (currentBoard.value) {
@@ -1312,7 +1318,8 @@ async function addCard() {
 }
 
 function openCardModal(card: Card) {
-  editingCard.value = { ...card }
+  // Convert due_date (ISO / with timezone) into a datetime-local friendly value
+  editingCard.value = { ...card, due_date: card.due_date ? normalizeForInput(card.due_date) : undefined }
   showEditCardModal.value = true
 }
 
@@ -1325,12 +1332,14 @@ async function updateCard() {
   if (!editingCard.value) return
   
   try {
-    await cardsApi.update(editingCard.value.id, {
+    const payload: any = {
       title: editingCard.value.title,
       description: editingCard.value.description,
-      due_date: editingCard.value.due_date,
       labels: editingCard.value.labels
-    })
+    }
+    if (editingCard.value.due_date) payload.due_date = toApiIso(editingCard.value.due_date)
+
+    await cardsApi.update(editingCard.value.id, payload)
     closeEditCardModal()
     if (currentBoard.value) {
       await fetchBoard(currentBoard.value.board.id)

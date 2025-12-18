@@ -32,6 +32,8 @@
             id="editCardDueDate" 
             v-model="localCard.due_date" 
             type="datetime-local" 
+            @focus="onDueDateFocus"
+            @change="onDueDateChange"
           />
         </div>
         <div class="form-group">
@@ -93,6 +95,7 @@
 import { ref, watch, computed } from 'vue'
 import type { Card, BoardLabel } from '../../types'
 import Icon from '../Icon.vue'
+import { toDatetimeLocal, normalizeForInput } from '../../utils/dates'
 
 export interface LinkedItem {
   type: 'note' | 'board'
@@ -132,7 +135,8 @@ const localCard = ref<Card>({
 // Reset form when modal opens
 watch(() => props.visible, (visible) => {
   if (visible && props.card) {
-    localCard.value = { ...props.card }
+    // Convert incoming ISO/UTC due_date to a value suitable for datetime-local input
+    localCard.value = { ...props.card, due_date: props.card?.due_date ? normalizeForInput(props.card.due_date) : undefined }
   }
 })
 
@@ -172,6 +176,23 @@ function removeLinkedItem(item: LinkedItem) {
 
 function handleSubmit() {
   emit('save', localCard.value)
+}
+
+function onDueDateFocus() {
+  if (!localCard.value.due_date) {
+    // default to today at 18:00
+    localCard.value.due_date = toDatetimeLocal(new Date(new Date().setHours(18, 0, 0, 0)))
+  }
+}
+
+function onDueDateChange(e: Event) {
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  // If user selected a date-only value or ended up at midnight, default to 18:00
+  const normalized = normalizeForInput(val)
+  if (normalized && normalized !== val) {
+    localCard.value.due_date = normalized
+  }
 }
 </script>
 
