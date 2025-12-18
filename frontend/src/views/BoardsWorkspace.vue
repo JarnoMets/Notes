@@ -682,7 +682,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { boardsApi, listsApi, cardsApi, labelsApi, automationsApi } from '../api'
 import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
