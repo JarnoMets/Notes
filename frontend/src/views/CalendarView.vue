@@ -78,14 +78,30 @@
         <div class="filter-section">
           <h3>Boards</h3>
           <div class="filter-list">
-            <label v-for="board in boards" :key="board.id" class="filter-item">
-              <input
-                type="checkbox"
-                :checked="selectedBoardIds.includes(board.id)"
-                @change="toggleBoard(board.id)"
-              />
-              <span class="filter-name">{{ board.name }}</span>
-            </label>
+            <div v-for="board in boards" :key="board.id" class="board-filter">
+              <div class="board-header">
+                <button class="expand-toggle" @click="toggleBoardExpanded(board.id)" :aria-expanded="isBoardExpanded(board.id)">
+                  <Icon :name="isBoardExpanded(board.id) ? 'chevron-down' : 'chevron-right'" />
+                </button>
+                <label class="filter-item">
+                  <input
+                    type="checkbox"
+                    :checked="selectedBoardIds.includes(board.id)"
+                    @change="toggleBoard(board.id)"
+                  />
+                  <span class="filter-name">{{ board.name }}</span>
+                </label>
+              </div>
+              <div v-if="isBoardExpanded(board.id)" class="board-children">
+                <div v-if="boardLists[board.id] && boardLists[board.id].length > 0" class="list-items">
+                  <div v-for="list in boardLists[board.id]" :key="list.id" class="list-item">
+                    <span class="list-name">{{ list.name }}</span>
+                    <span class="list-count">({{ cardCountByList[list.id] ?? 0 }})</span>
+                  </div>
+                </div>
+                <div v-else class="list-empty">No lists</div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -536,6 +552,26 @@ interface CardWithBoard extends Card {
 const boards = ref<Board[]>([])
 const cards = ref<CardWithBoard[]>([])
 const selectedBoardIds = ref<string[]>([])
+// Lists per board (boardId -> List[])
+const boardLists = ref<Record<string, List[]>>({})
+// Track expansion state per board; persisted to localStorage under 'calendar.boardExpanded'
+function readBoardExpanded(): Record<string, boolean> {
+  try {
+    const v = localStorage.getItem('calendar.boardExpanded')
+    return v ? JSON.parse(v) : {}
+  } catch (e) {
+    return {}
+  }
+}
+const boardExpanded = ref<Record<string, boolean>>(readBoardExpanded())
+
+watch(boardExpanded, (val) => {
+  try {
+    localStorage.setItem('calendar.boardExpanded', JSON.stringify(val))
+  } catch (e) {
+    // ignore
+  }
+}, { deep: true })
 const sidebarCollapsed = ref(false)
 const viewMode = ref<'month' | 'week' | 'workweek' | 'day'>('month')
 
@@ -918,6 +954,28 @@ const calendarDays = computed((): CalendarDay[] => {
 
   return days
 })
+
+// Derived helper: card count per list for display
+const cardCountByList = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const c of cards.value) {
+    // cards have list_id in card model? If not, this will be 0 - safe fallback
+    // We'll try to read c.list_id if available
+    // @ts-ignore
+    const listId = (c as any).list_id
+    if (!listId) continue
+    counts[listId] = (counts[listId] || 0) + 1
+  }
+  return counts
+})
+
+function isBoardExpanded(boardId: string) {
+  return !!boardExpanded.value[boardId]
+}
+
+function toggleBoardExpanded(boardId: string) {
+  boardExpanded.value[boardId] = !boardExpanded.value[boardId]
+}
 
 // Methods
 function getWeekStart(date: Date): Date {
@@ -1373,14 +1431,17 @@ onMounted(async () => {
 
     // Fetch cards for all boards through lists (parallelized)
     try {
-      // Fetch lists for all boards in parallel
+      // Fetch lists for all boards in parallel and store them in boardLists
       const listsPerBoard = await Promise.all(
         boards.value.map(async (board) => {
           try {
             const listsRes = await listsApi.getAll(board.id)
+            // store lists
+            boardLists.value[board.id] = listsRes.data as List[]
             return { board, lists: listsRes.data as List[] }
           } catch (err) {
             console.error(`Failed to load lists for board ${board.id}:`, err)
+            boardLists.value[board.id] = []
             return { board, lists: [] as List[] }
           }
         })

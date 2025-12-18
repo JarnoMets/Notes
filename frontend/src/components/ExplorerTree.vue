@@ -133,49 +133,41 @@
         @drop.prevent="onBoardsRootDrop"
         :class="{ 'root-drop-active': isBoardsRootDropTarget }"
       >
-        <!-- Collapsible Boards Section -->
-        <div class="section-header" @click="boardsSectionExpanded = !boardsSectionExpanded">
-          <span class="expand-toggle">
-            <Icon :name="boardsSectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
-          </span>
-          <Icon name="board" :size="14" />
-          <span class="section-title">Boards</span>
-          <span class="section-count">{{ explorerStore.boardsList.length }}</span>
-        </div>
-        <div v-if="boardsSectionExpanded">
-          <!-- Favorites Section (Boards) -->
-          <div v-if="explorerStore.favoritesList.some(i => i.type === 'board' || i.type === 'board-folder')" class="favorites-section">
-            <div 
-              class="favorites-header"
-              @click="explorerStore.toggleFavoritesFolder()"
-            >
-              <span class="expand-toggle">
-                <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
-              </span>
-              <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
-              <span class="favorites-title">Favorites</span>
-              <span class="favorites-count">{{ explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder').length }}</span>
-            </div>
-            <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
-              <ExplorerTreeNode
-                v-for="item in explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder')"
-                :key="'fav-board-' + item.id"
-                :item="item"
-                :depth="1"
-                :in-favorites="true"
-                @select="handleBoardItemSelect"
-                @toggle="handleBoardToggle"
-                @dblclick="handleBoardItemDoubleClick"
-                @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
-                @rename="(item: ExplorerItem) => $emit('rename', item)"
-                @delete="(item: ExplorerItem) => $emit('delete', item)"
-                @toggle-importance="handleToggleBoardImportance"
-                @toggle-urgent="handleToggleBoardUrgent"
-                @move-item="handleMoveItem"
-              />
-            </div>
+        <!-- Boards: render favorites and boards list directly (no collapsible parent) -->
+        <!-- Favorites Section (Boards) -->
+        <div v-if="explorerStore.favoritesList.some(i => i.type === 'board' || i.type === 'board-folder')" class="favorites-section">
+          <div 
+            class="favorites-header"
+            @click="explorerStore.toggleFavoritesFolder()"
+          >
+            <span class="expand-toggle">
+              <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+            </span>
+            <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
+            <span class="favorites-title">Favorites</span>
+            <span class="favorites-count">{{ explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder').length }}</span>
           </div>
-          <template v-if="explorerStore.boardsList.length > 0">
+          <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
+            <ExplorerTreeNode
+              v-for="item in explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder')"
+              :key="'fav-board-' + item.id"
+              :item="item"
+              :depth="1"
+              :in-favorites="true"
+              @select="handleBoardItemSelect"
+              @toggle="handleBoardToggle"
+              @dblclick="handleBoardItemDoubleClick"
+              @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
+              @rename="(item: ExplorerItem) => $emit('rename', item)"
+              @delete="(item: ExplorerItem) => $emit('delete', item)"
+              @toggle-importance="handleToggleBoardImportance"
+              @toggle-urgent="handleToggleBoardUrgent"
+              @move-item="handleMoveItem"
+            />
+          </div>
+        </div>
+
+        <template v-if="explorerStore.boardsList.length > 0">
           <ExplorerTreeNode
             v-for="item in explorerStore.boardsList"
             :key="item.id"
@@ -200,7 +192,6 @@
             Drop here to move to root
           </div>
         </template>
-        </div>
         <div v-else class="tree-empty">
           <Icon name="board" :size="32" />
           <span>No boards yet</span>
@@ -228,28 +219,7 @@ const explorerStore = useExplorerStore()
 const router = useRouter()
 const route = useRoute()
 
-// Control expansion state for the boards section (collapsed by default)
-// Persist state in localStorage under the key 'explorer.boardsSectionExpanded'
-function readBoardsExpanded(): boolean {
-  try {
-    const v = localStorage.getItem('explorer.boardsSectionExpanded')
-    if (v === null) return false
-    return v === 'true'
-  } catch (e) {
-    return false
-  }
-}
-
-const boardsSectionExpanded = ref<boolean>(readBoardsExpanded())
-
-// Persist changes to localStorage
-watch(boardsSectionExpanded, (val) => {
-  try {
-    localStorage.setItem('explorer.boardsSectionExpanded', val ? 'true' : 'false')
-  } catch (e) {
-    // ignore storage errors
-  }
-})
+// Boards are rendered directly (no separate expanded state persisted)
 
 const activeTab = ref<'notes' | 'boards'>(props.defaultTab || 'notes')
 
