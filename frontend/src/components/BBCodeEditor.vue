@@ -141,10 +141,10 @@
 
       <!-- Undo/Redo -->
       <div class="toolbar-group">
-        <button @click="() => emit('request-undo')" :disabled="!canUndo" title="Undo" class="toolbar-btn">
+        <button @click="undo" :disabled="!canUndo" title="Undo" class="toolbar-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/></svg>
         </button>
-        <button @click="() => emit('request-redo')" :disabled="!canRedo" title="Redo" class="toolbar-btn">
+        <button @click="redo" :disabled="!canRedo" title="Redo" class="toolbar-btn">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/></svg>
         </button>
       </div>
