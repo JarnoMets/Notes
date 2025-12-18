@@ -739,7 +739,7 @@ const newListName = ref('')
 const showAddCardModal = ref(false)
 const showEditCardModal = ref(false)
 const selectedListId = ref('')
-const newCard = ref({ title: '', description: '' })
+const newCard = ref({ title: '', description: '', due_date: undefined as string | undefined })
 const editingCard = ref<Card | null>(null)
 
 // Side panels
@@ -1306,7 +1306,7 @@ async function restoreList(listId: string) {
 // Card CRUD
 function openAddCardModal(listId: string) {
   selectedListId.value = listId
-  newCard.value = { title: '', description: '' }
+  newCard.value = { title: '', description: '', due_date: undefined }
   showAddCardModal.value = true
 }
 
@@ -1321,7 +1321,7 @@ async function addCard() {
     }
     await cardsApi.create(selectedListId.value, payload)
     showAddCardModal.value = false
-    newCard.value = { title: '', description: '' }
+    newCard.value = { title: '', description: '', due_date: undefined }
     if (currentBoard.value) {
       await fetchBoard(currentBoard.value.board.id)
     }
@@ -1378,6 +1378,25 @@ function onEditDueDateChange(e: Event) {
   const normalized = normalizeForInput(val)
   if (normalized && normalized !== val) {
     editingCard.value.due_date = normalized
+  }
+}
+
+// Due date handlers for the add card modal
+function onAddDueDateFocus() {
+  if (!newCard.value) return
+  if (!newCard.value.due_date) {
+    // default to today at 18:00 local
+    newCard.value.due_date = toDatetimeLocal(new Date(new Date().setHours(18, 0, 0, 0)))
+  }
+}
+
+function onAddDueDateChange(e: Event) {
+  if (!newCard.value) return
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const normalized = normalizeForInput(val)
+  if (normalized && normalized !== val) {
+    newCard.value.due_date = normalized
   }
 }
 
