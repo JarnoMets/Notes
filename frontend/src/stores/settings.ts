@@ -303,24 +303,50 @@ export const useSettingsStore = defineStore('settings', () => {
     if (tzidMatch) {
       try {
         let tzName = tzidMatch[1]
-        
+
         // Convert Windows timezone names to IANA timezone names
         if (tzName in WINDOWS_TO_IANA_TIMEZONES) {
           tzName = WINDOWS_TO_IANA_TIMEZONES[tzName as keyof typeof WINDOWS_TO_IANA_TIMEZONES]
         }
-        
-        // Create the date as if it's in UTC first
-        const tempDate = new Date(Date.UTC(year, month, day, hour, minute, second))
-        
-        // Convert to the specified timezone string and back to get the offset
-        const tzString = tempDate.toLocaleString('en-US', { timeZone: tzName })
-        const tzDate = new Date(tzString)
-        
-        // Calculate offset between UTC and the target timezone
-        const offset = tempDate.getTime() - tzDate.getTime()
-        
-        // Apply the offset to get the correct local time
-        return { date: new Date(tempDate.getTime() - offset), allDay }
+
+        // Use Intl.DateTimeFormat.formatToParts to robustly compute the offset
+        // Create a UTC timestamp for the provided components
+        const utcForGiven = Date.UTC(year, month, day, hour, minute, second)
+
+        // Formatter that will output the date/time parts for the target timezone
+        const fmt = new Intl.DateTimeFormat('en-US', {
+          timeZone: tzName,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })
+
+        const parts = fmt.formatToParts(new Date(utcForGiven))
+        const partMap: Record<string, string> = {}
+        for (const p of parts) {
+          if (p.type && p.value) partMap[p.type] = p.value
+        }
+
+        const tzYear = Number(partMap.year)
+        const tzMonth = Number(partMap.month)
+        const tzDay = Number(partMap.day)
+        const tzHour = Number(partMap.hour)
+        const tzMinute = Number(partMap.minute)
+        const tzSecond = Number(partMap.second)
+
+        // Build a UTC timestamp from the timezone-formatted parts
+        const tzAsUtc = Date.UTC(tzYear, tzMonth - 1, tzDay, tzHour, tzMinute, tzSecond)
+
+        // The difference between our initial UTC guess and the tz-formatted UTC gives the offset
+        const offset = utcForGiven - tzAsUtc
+
+        // Subtract offset to obtain the correct instant for the given local components
+        const targetTimestamp = utcForGiven - offset
+        return { date: new Date(targetTimestamp), allDay }
       } catch (e) {
         // If timezone parsing fails, treat as local time
         console.warn(`Failed to parse timezone ${tzidMatch[1]}, using local time`)
