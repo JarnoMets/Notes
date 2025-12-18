@@ -350,6 +350,16 @@
               placeholder="Add more details..."
             ></textarea>
           </div>
+          <div class="form-group">
+            <label for="cardDueDate">Due Date (optional)</label>
+            <input
+              id="cardDueDate"
+              v-model="newCard.due_date"
+              type="datetime-local"
+              @focus="onAddDueDateFocus"
+              @change="onAddDueDateChange"
+            />
+          </div>
           <div class="modal-actions">
             <button type="button" class="btn btn-secondary" @click="showAddCardModal = false">Cancel</button>
             <button type="submit" class="btn btn-primary">Add Card</button>
