@@ -24,8 +24,10 @@ export function normalizeForInput(value?: string): string | undefined {
     return `${value}T18:00`
   }
 
-  // If it's already in datetime-local like format (YYYY-MM-DDTHH:mm) keep, but if time is 00:00 default to 18:00
-  const dtMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/) 
+  // If it's already in datetime-local like format (exactly YYYY-MM-DDTHH:mm with no timezone/offset)
+  // keep as-is. Use an anchored regex so we don't accidentally match ISO strings that include
+  // a timezone (Z or offsets) — those must be parsed as UTC and converted to local.
+  const dtMatch = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})$/)
   if (dtMatch) {
     const hour = parseInt(dtMatch[2], 10)
     const min = parseInt(dtMatch[3], 10)
