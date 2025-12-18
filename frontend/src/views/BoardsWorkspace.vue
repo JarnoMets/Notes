@@ -682,8 +682,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { boardsApi, listsApi, cardsApi, labelsApi, automationsApi } from '../api'
 import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
 import { useNotesStore } from '../stores/notes'
@@ -697,6 +697,7 @@ import { toApiIso, normalizeForInput } from '../utils/dates'
 import { toDatetimeLocal } from '../utils/dates'
 
 const router = useRouter()
+const route = useRoute()
 const explorerStore = useExplorerStore()
 const notesStore = useNotesStore()
 
@@ -889,6 +890,32 @@ async function selectBoard(boardId: string) {
   // Close mobile sidebar when a board is selected
   isMobileSidebarOpen.value = false
 }
+
+// If navigated to /boards?board=...&card=..., open the specified board and card
+onMounted(async () => {
+  try {
+    const q = route.query
+    const boardId = typeof q.board === 'string' ? q.board : undefined
+    const cardId = typeof q.card === 'string' ? q.card : undefined
+    if (boardId) {
+      await selectBoard(boardId)
+      // After selecting board, if a card id was provided, try to find and open it
+      if (cardId && currentBoard.value) {
+        // Search lists in currentBoard for the card
+        for (const lwc of currentBoard.value.lists) {
+          const found = lwc.cards.find(c => c.id === cardId)
+          if (found) {
+            // Normalize due_date for input and open modal
+            openCardModal(found)
+            break
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Failed to open card from query params', e)
+  }
+})
 
 // Explorer tree handlers
 function handleExplorerSelect(item: ExplorerItem) {

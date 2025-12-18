@@ -1119,7 +1119,9 @@ function showDayModal(day: CalendarDay) {
 
 function onItemClick(item: CalendarItem) {
   if (item.type === 'card' && item.card) {
-    router.push(`/boards?card=${item.card.id}`)
+    // Navigate to boards and include both board and card query params so the boards view
+    // can open the correct board and highlight/open the card immediately.
+    router.push(`/boards?board=${item.card.boardId}&card=${item.card.id}`)
   } else if (item.type === 'ics') {
     selectedEvent.value = item
   } else if (item.type === 'note' && item.noteId) {
