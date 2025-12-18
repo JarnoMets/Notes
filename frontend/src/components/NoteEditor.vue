@@ -1068,33 +1068,51 @@ onMounted(() => {
 }
 
 /* Task List */
-.tiptap-editor :deep(.task-list) {
+/* Apply the same styles both in the editor and in view mode */
+.tiptap-editor :deep(.task-list),
+.view-mode-content :deep(.task-list) {
   list-style: none;
   padding-left: 0;
+  margin: 0.25rem 0;
 }
 
-.tiptap-editor :deep(.task-item) {
+.tiptap-editor :deep(.task-item),
+.view-mode-content :deep(.task-item) {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.5rem;
-  margin: 0.5rem 0;
+  margin: 0.25rem 0;
 }
 
-.tiptap-editor :deep(.task-item > label) {
+.tiptap-editor :deep(.task-item > label),
+.view-mode-content :deep(.task-item > label) {
   flex-shrink: 0;
-  margin-top: 0.1em;
 }
 
-.tiptap-editor :deep(.task-item > label input[type="checkbox"]) {
+.tiptap-editor :deep(.task-item > label input[type="checkbox"]),
+.view-mode-content :deep(.task-item > label input[type="checkbox"]) {
   width: 18px;
   height: 18px;
   cursor: pointer;
   accent-color: var(--accent);
 }
 
-.tiptap-editor :deep(.task-item[data-checked="true"] > div) {
+/* Inline content next to checkbox */
+.tiptap-editor :deep(.task-content),
+.view-mode-content :deep(.task-content) {
+  display: inline-block;
+}
+
+.tiptap-editor :deep(.task-item[data-checked="true"] > .task-content),
+.view-mode-content :deep(.task-item[data-checked="true"] > .task-content) {
   text-decoration: line-through;
   color: var(--text-muted);
+}
+
+/* Indent nested task lists to show hierarchy */
+.tiptap-editor :deep(.task-list .task-list),
+.view-mode-content :deep(.task-list .task-list) {
+  margin-left: 1.5rem;
 }
 
 .tiptap-editor :deep(.editor-table) {
