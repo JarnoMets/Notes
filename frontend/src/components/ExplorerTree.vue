@@ -133,6 +133,38 @@
         @drop.prevent="onBoardsRootDrop"
         :class="{ 'root-drop-active': isBoardsRootDropTarget }"
       >
+          <!-- Favorites Section (Boards) -->
+          <div v-if="explorerStore.favoritesList.some(i => i.type === 'board' || i.type === 'board-folder')" class="favorites-section">
+            <div 
+              class="favorites-header"
+              @click="explorerStore.toggleFavoritesFolder()"
+            >
+              <span class="expand-toggle">
+                <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+              </span>
+              <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
+              <span class="favorites-title">Favorites</span>
+              <span class="favorites-count">{{ explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder').length }}</span>
+            </div>
+            <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
+              <ExplorerTreeNode
+                v-for="item in explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder')"
+                :key="'fav-board-' + item.id"
+                :item="item"
+                :depth="1"
+                :in-favorites="true"
+                @select="handleBoardItemSelect"
+                @toggle="handleBoardToggle"
+                @dblclick="handleBoardItemDoubleClick"
+                @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
+                @rename="(item: ExplorerItem) => $emit('rename', item)"
+                @delete="(item: ExplorerItem) => $emit('delete', item)"
+                @toggle-importance="handleToggleBoardImportance"
+                @toggle-urgent="handleToggleBoardUrgent"
+                @move-item="handleMoveItem"
+              />
+            </div>
+          </div>
         <template v-if="explorerStore.boardsList.length > 0">
           <ExplorerTreeNode
             v-for="item in explorerStore.boardsList"
