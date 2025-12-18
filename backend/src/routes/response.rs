@@ -102,7 +102,14 @@ pub fn ok_status() -> HttpResponse {
 macro_rules! require_auth {
     ($req:expr, $state:expr) => {
         match $crate::routes::auth::get_user_id_from_request(&$req, &$state.jwt_secret) {
-            Some(id) => id,
+            Some(id) => {
+                // Verify the user still exists in the database. If the user was deleted
+                // or otherwise doesn't exist anymore, treat the request as unauthenticated.
+                match $state.db.get_user_by_id(&id).await {
+                    Ok(_) => id,
+                    Err(_) => return $crate::routes::response::not_authenticated(),
+                }
+            }
             None => return $crate::routes::response::not_authenticated(),
         }
     };
@@ -118,7 +125,16 @@ macro_rules! require_auth {
 macro_rules! require_auth_or_query {
     ($req:expr, $state:expr) => {
         match $crate::routes::auth::get_user_id_from_request_or_query(&$req, &$state.jwt_secret) {
-            Some(id) => id,
+            Some(id) => {
+                // As above, ensure the referenced user exists in the database. This
+                // covers the case where a token is still valid but the user record
+                // has been removed, which previously caused the frontend to appear
+                // logged-in but show no user data.
+                match $state.db.get_user_by_id(&id).await {
+                    Ok(_) => id,
+                    Err(_) => return $crate::routes::response::not_authenticated(),
+                }
+            }
             None => return $crate::routes::response::not_authenticated(),
         }
     };
