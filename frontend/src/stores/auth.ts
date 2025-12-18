@@ -123,6 +123,14 @@ export const useAuthStore = defineStore('auth', () => {
     clearAuth()
   }
 
+  // Listen for global forced logout events (dispatched by axios interceptor)
+  // This keeps the reactive store in sync when client clears localStorage directly.
+  if (typeof window !== 'undefined') {
+    window.addEventListener('auth:force-logout', () => {
+      clearAuth()
+    })
+  }
+
   // Initialize auth header if token exists
   if (token.value) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
