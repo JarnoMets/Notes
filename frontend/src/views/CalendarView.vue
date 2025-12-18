@@ -1371,28 +1371,41 @@ onMounted(async () => {
     boards.value = boardsRes.data
     selectedBoardIds.value = boards.value.map(b => b.id)
 
-    // Fetch cards for all boards through lists
-    const allCards: CardWithBoard[] = []
-    for (const board of boards.value) {
-      try {
-        const listsRes = await listsApi.getAll(board.id)
-        const lists: List[] = listsRes.data
-        
-        for (const list of lists) {
-          const cardsRes = await cardsApi.getAll(list.id)
-          const listCards: Card[] = cardsRes.data
-          
-          allCards.push(...listCards.map(card => ({
-            ...card,
-            boardId: board.id,
-            boardName: board.name
-          })))
+    // Fetch cards for all boards through lists (parallelized)
+    try {
+      // Fetch lists for all boards in parallel
+      const listsPerBoard = await Promise.all(
+        boards.value.map(async (board) => {
+          try {
+            const listsRes = await listsApi.getAll(board.id)
+            return { board, lists: listsRes.data as List[] }
+          } catch (err) {
+            console.error(`Failed to load lists for board ${board.id}:`, err)
+            return { board, lists: [] as List[] }
+          }
+        })
+      )
+
+      // Fetch cards for all lists in parallel (flattened)
+      const cardFetchPromises: Promise<CardWithBoard[]>[] = []
+      for (const bwl of listsPerBoard) {
+        for (const list of bwl.lists) {
+          const p = cardsApi.getAll(list.id)
+            .then(res => (res.data as Card[]).map(card => ({ ...card, boardId: bwl.board.id, boardName: bwl.board.name })))
+            .catch(err => {
+              console.error(`Failed to load cards for list ${list.id}:`, err)
+              return [] as CardWithBoard[]
+            })
+          cardFetchPromises.push(p)
         }
-      } catch (err) {
-        console.error(`Failed to load cards for board ${board.id}:`, err)
       }
+
+      const cardsArrays = await Promise.all(cardFetchPromises)
+      cards.value = cardsArrays.flat()
+    } catch (err) {
+      console.error('Failed to load cards for calendar:', err)
+      cards.value = []
     }
-    cards.value = allCards
 
     // ICS calendars are pre-loaded from App.vue, but ensure they're loaded
     if (!settingsStore.initialized) {
