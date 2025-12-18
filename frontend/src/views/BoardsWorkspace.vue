@@ -392,6 +392,8 @@
               id="editCardDueDate" 
               v-model="editingCard.due_date" 
               type="datetime-local" 
+              @focus="onEditDueDateFocus"
+              @change="onEditDueDateChange"
             />
           </div>
           <div class="form-group">
@@ -682,6 +684,7 @@ import Icon from '../components/Icon.vue'
 import ConfirmModal from '../components/ConfirmModal.vue'
 import PromptModal from '../components/PromptModal.vue'
 import { toApiIso, normalizeForInput } from '../utils/dates'
+import { toDatetimeLocal } from '../utils/dates'
 
 const router = useRouter()
 const explorerStore = useExplorerStore()
@@ -1346,6 +1349,25 @@ async function updateCard() {
     }
   } catch (error) {
     console.error('Failed to update card:', error)
+  }
+}
+
+// Due date handlers for the edit card modal
+function onEditDueDateFocus() {
+  if (!editingCard.value) return
+  if (!editingCard.value.due_date) {
+    // default to today at 18:00 local
+    editingCard.value.due_date = toDatetimeLocal(new Date(new Date().setHours(18, 0, 0, 0)))
+  }
+}
+
+function onEditDueDateChange(e: Event) {
+  if (!editingCard.value) return
+  const val = (e.target as HTMLInputElement).value
+  if (!val) return
+  const normalized = normalizeForInput(val)
+  if (normalized && normalized !== val) {
+    editingCard.value.due_date = normalized
   }
 }
 
