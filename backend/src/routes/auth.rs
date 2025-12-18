@@ -37,7 +37,11 @@ pub struct GoogleIdTokenPayload {
     pub exp: u64,              // Expiration
 }
 
-const TOKEN_EXPIRY_DAYS: i64 = 7;
+// Shorten token lifetime to reduce chance of SSO/session desyncs. Tokens are
+// intentionally short-lived; clients should re-login or obtain a fresh token
+// via the login flow. For a refresh-token-based flow, implement a refresh
+// endpoint and rotate refresh tokens securely.
+const TOKEN_EXPIRY_DAYS: i64 = 1;
 
 #[derive(Debug, Deserialize)]
 pub struct GoogleTokenResponse {
