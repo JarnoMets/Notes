@@ -310,7 +310,8 @@ export class BBCodeRenderer {
         const paneId = (this as any).paneId || ''
 
         // Render with stable todo id and call toggle by id
-        return `<ul class="task-list"><li class="task-item" data-checked="${checked ? 'true' : 'false'}" data-todo-id="${this.escapeHtml(todoId)}"><label><input type="checkbox" ${checked ? 'checked' : ''} onclick="window.__toggleTodo && window.__toggleTodo('${paneId}', '${this.escapeHtml(todoId)}'); event.stopPropagation();" /></label><div>${inner}</div></li></ul>`
+        // Use a span for the content so it stays on the same line as the checkbox.
+        return `<ul class="task-list"><li class="task-item" data-checked="${checked ? 'true' : 'false'}" data-todo-id="${this.escapeHtml(todoId)}"><label><input type="checkbox" ${checked ? 'checked' : ''} onclick="window.__toggleTodo && window.__toggleTodo('${paneId}', '${this.escapeHtml(todoId)}'); event.stopPropagation();" /></label><span class="task-content">${inner}</span></li></ul>`
       },
       ul: (node) => `<ul class="bbcode-list">${this.renderContent(node.content)}</ul>`,
       ol: (node) => `<ol class="bbcode-list">${this.renderContent(node.content)}</ol>`,
