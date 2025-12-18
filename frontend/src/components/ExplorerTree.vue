@@ -229,7 +229,27 @@ const router = useRouter()
 const route = useRoute()
 
 // Control expansion state for the boards section (collapsed by default)
-const boardsSectionExpanded = ref(false)
+// Persist state in localStorage under the key 'explorer.boardsSectionExpanded'
+function readBoardsExpanded(): boolean {
+  try {
+    const v = localStorage.getItem('explorer.boardsSectionExpanded')
+    if (v === null) return false
+    return v === 'true'
+  } catch (e) {
+    return false
+  }
+}
+
+const boardsSectionExpanded = ref<boolean>(readBoardsExpanded())
+
+// Persist changes to localStorage
+watch(boardsSectionExpanded, (val) => {
+  try {
+    localStorage.setItem('explorer.boardsSectionExpanded', val ? 'true' : 'false')
+  } catch (e) {
+    // ignore storage errors
+  }
+})
 
 const activeTab = ref<'notes' | 'boards'>(props.defaultTab || 'notes')
 
