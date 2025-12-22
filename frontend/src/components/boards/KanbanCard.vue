@@ -82,6 +82,8 @@ const formattedDate = computed(() => {
 
 const isOverdue = computed(() => {
   if (!props.card.due_date) return false
+  // If card status is 'done' treat as not overdue
+  if ((props.card as any).status === 'done') return false
   return new Date(props.card.due_date) < new Date()
 })
 
