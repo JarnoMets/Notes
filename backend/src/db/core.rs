@@ -339,6 +339,7 @@ impl Database {
                 due_date TIMESTAMPTZ,
                 labels JSONB NOT NULL DEFAULT '[]',
                 archived BOOLEAN NOT NULL DEFAULT FALSE,
+                status TEXT NOT NULL DEFAULT 'open',
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )",
@@ -349,6 +350,13 @@ impl Database {
         // Add archived column to cards if not exists
         let _ = sqlx::query(
             "ALTER TABLE cards ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE"
+        )
+        .execute(pool)
+        .await;
+
+        // Add status column to cards if not exists (migration)
+        let _ = sqlx::query(
+            "ALTER TABLE cards ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open'"
         )
         .execute(pool)
         .await;
@@ -384,6 +392,7 @@ impl Database {
                 trigger_config JSONB NOT NULL DEFAULT '{}',
                 action_type TEXT NOT NULL,
                 action_config JSONB NOT NULL DEFAULT '{}',
+                last_run_at TIMESTAMPTZ,
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )",
@@ -491,11 +500,20 @@ impl Database {
             .execute(pool)
             .await;
 
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_cards_status ON cards(list_id, status)")
+            .execute(pool)
+            .await;
+
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_board_labels ON board_labels(board_id)")
             .execute(pool)
             .await;
 
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_automation_rules ON automation_rules(board_id)")
+            .execute(pool)
+            .await;
+
+        // Add last_run_at column if it doesn't exist (migration)
+        let _ = sqlx::query("ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ")
             .execute(pool)
             .await;
 

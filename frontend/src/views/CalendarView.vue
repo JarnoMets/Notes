@@ -76,13 +76,15 @@
 
         <!-- Board Filters -->
         <div class="filter-section">
-          <h3>Boards</h3>
-          <div class="filter-list">
+          <div class="section-header">
+            <h3>Boards</h3>
+            <button class="expand-toggle" @click="toggleBoardsList" :aria-expanded="showBoardsList" :title="showBoardsList ? 'Hide boards' : 'Show boards'">
+              <Icon :name="showBoardsList ? 'chevron-down' : 'chevron-right'" />
+            </button>
+          </div>
+          <div class="filter-list" v-if="showBoardsList">
             <div v-for="board in boards" :key="board.id" class="board-filter">
               <div class="board-header">
-                <button class="expand-toggle" @click="toggleBoardExpanded(board.id)" :aria-expanded="isBoardExpanded(board.id)">
-                  <Icon :name="isBoardExpanded(board.id) ? 'chevron-down' : 'chevron-right'" />
-                </button>
                 <label class="filter-item">
                   <input
                     type="checkbox"
@@ -92,15 +94,7 @@
                   <span class="filter-name">{{ board.name }}</span>
                 </label>
               </div>
-              <div v-if="isBoardExpanded(board.id)" class="board-children">
-                <div v-if="boardLists[board.id] && boardLists[board.id].length > 0" class="list-items">
-                  <div v-for="list in boardLists[board.id]" :key="list.id" class="list-item">
-                    <span class="list-name">{{ list.name }}</span>
-                    <span class="list-count">({{ cardCountByList[list.id] ?? 0 }})</span>
-                  </div>
-                </div>
-                <div v-else class="list-empty">No lists</div>
-              </div>
+              <!-- lists removed from calendar sidebar for simplicity -->
             </div>
           </div>
         </div>
@@ -554,25 +548,27 @@ const cards = ref<CardWithBoard[]>([])
 const selectedBoardIds = ref<string[]>([])
 // Lists per board (boardId -> List[])
 const boardLists = ref<Record<string, List[]>>({})
-// Track expansion state per board; persisted to localStorage under 'calendar.boardExpanded'
-function readBoardExpanded(): Record<string, boolean> {
+// Per-board expand state removed for Calendar view — show boards only (no per-board dropdowns)
+const sidebarCollapsed = ref(false)
+// Single spoiler-like toggle to show/hide boards section in the sidebar (persisted)
+const BOARDS_LIST_KEY = 'calendar.showBoardsList'
+const showBoardsList = ref<boolean>(true)
+function loadShowBoardsList() {
   try {
-    const v = localStorage.getItem('calendar.boardExpanded')
-    return v ? JSON.parse(v) : {}
+    const v = localStorage.getItem(BOARDS_LIST_KEY)
+    showBoardsList.value = v === null ? true : (v === '1' || v === 'true')
   } catch (e) {
-    return {}
+    showBoardsList.value = true
   }
 }
-const boardExpanded = ref<Record<string, boolean>>(readBoardExpanded())
-
-watch(boardExpanded, (val) => {
-  try {
-    localStorage.setItem('calendar.boardExpanded', JSON.stringify(val))
-  } catch (e) {
-    // ignore
-  }
-}, { deep: true })
-const sidebarCollapsed = ref(false)
+function saveShowBoardsList() {
+  try { localStorage.setItem(BOARDS_LIST_KEY, showBoardsList.value ? '1' : '0') } catch (e) {}
+}
+function toggleBoardsList() {
+  showBoardsList.value = !showBoardsList.value
+  saveShowBoardsList()
+}
+loadShowBoardsList()
 const viewMode = ref<'month' | 'week' | 'workweek' | 'day'>('month')
 
 // Helper function to convert date to YYYY-MM-DD format in local time
@@ -809,7 +805,9 @@ const allCalendarItems = computed((): CalendarItem[] => {
   // Add cards with due dates
   for (const card of cards.value) {
     if (!card.due_date) continue
-    if (selectedBoardIds.value.length > 0 && !selectedBoardIds.value.includes(card.boardId)) continue
+    // If no boards are selected, don't show any cards.
+    if (selectedBoardIds.value.length === 0) continue
+    if (!selectedBoardIds.value.includes(card.boardId)) continue
 
     const dueDate = new Date(card.due_date)
 
@@ -955,27 +953,9 @@ const calendarDays = computed((): CalendarDay[] => {
   return days
 })
 
-// Derived helper: card count per list for display
-const cardCountByList = computed(() => {
-  const counts: Record<string, number> = {}
-  for (const c of cards.value) {
-    // cards have list_id in card model? If not, this will be 0 - safe fallback
-    // We'll try to read c.list_id if available
-    // @ts-ignore
-    const listId = (c as any).list_id
-    if (!listId) continue
-    counts[listId] = (counts[listId] || 0) + 1
-  }
-  return counts
-})
+// (removed list-level counts — lists are not shown in calendar sidebar)
 
-function isBoardExpanded(boardId: string) {
-  return !!boardExpanded.value[boardId]
-}
-
-function toggleBoardExpanded(boardId: string) {
-  boardExpanded.value[boardId] = !boardExpanded.value[boardId]
-}
+// Per-board expand helpers removed — calendar displays only board checkboxes
 
 // Methods
 function getWeekStart(date: Date): Date {
@@ -1566,6 +1546,28 @@ watch(viewMode, () => {
 .collapse-btn:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.boards-spoiler-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.boards-spoiler-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.boards-spoiler-btn Icon {
+  pointer-events: none;
 }
 
 .sidebar-content {
