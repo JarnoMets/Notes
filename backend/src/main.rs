@@ -49,6 +49,26 @@ async fn main() -> std::io::Result<()> {
         app_url,
     });
 
+    // Spawn background task to run interval-based automations
+    {
+        let db_clone = app_state.db.clone();
+        tokio::spawn(async move {
+            // Polling loop: every 30 seconds check for due interval automations
+            let poll_interval = std::time::Duration::from_secs(30);
+            loop {
+                match db_clone.run_due_interval_automations().await {
+                    Ok(_) => {
+                        // ok
+                    }
+                    Err(e) => {
+                        log::error!("Error running interval automations: {}", e);
+                    }
+                }
+                tokio::time::sleep(poll_interval).await;
+            }
+        });
+    }
+
     log::info!("Starting Notes Server API on http://0.0.0.0:8080");
 
     HttpServer::new(move || {

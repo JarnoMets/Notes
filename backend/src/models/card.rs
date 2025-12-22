@@ -15,6 +15,7 @@ pub struct Card {
     pub due_date: Option<DateTime<Utc>>,
     pub labels: Vec<String>,
     pub archived: bool,
+    pub status: String,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -36,6 +37,7 @@ impl Card {
             due_date: None,
             labels: Vec::new(),
             archived: false,
+            status: String::from("open"),
             created_at: now,
             updated_at: now,
         }
@@ -50,6 +52,7 @@ pub struct CreateCardRequest {
     pub position: Option<i32>,
     pub due_date: Option<DateTime<Utc>>,
     pub labels: Option<Vec<String>>,
+    pub status: Option<String>,
 }
 
 /// Request body for updating a card
@@ -62,6 +65,7 @@ pub struct UpdateCardRequest {
     pub labels: Option<Vec<String>>,
     pub archived: Option<bool>,
     pub list_id: Option<String>,
+    pub status: Option<String>,
 }
 
 /// Request body for moving a card between lists

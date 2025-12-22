@@ -5,11 +5,24 @@ import App from './App.vue'
 import './style.css'
 import './styles/index.css'
 import { useAuthStore } from './stores/auth'
+import { useThemeStore } from './stores/theme'
 
 const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
+
+// Initialize theme store early so CSS variables are applied before any view renders.
+// This ensures pages that render before a user or settings are loaded (like /auth/*)
+// will still receive the default theme (dark) immediately.
+try {
+	const theme = useThemeStore()
+	// applyTheme is called on store init, but call explicitly to be safe
+	theme.applyTheme()
+} catch (e) {
+	// If Pinia isn't ready yet, skip silently — theme will apply when store is used
+	console.warn('Theme initialization skipped:', e)
+}
 app.mount('#app')
 
 // Proactively validate session on startup, on window focus and periodically.

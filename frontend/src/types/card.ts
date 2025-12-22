@@ -8,6 +8,7 @@ export interface Card {
   due_date?: string
   labels: string[]
   archived: boolean
+  status?: string
   created_at: string
   updated_at: string
 }

@@ -1,6 +1,8 @@
 //! Card route handlers
 
 use actix_web::{web, HttpRequest, Responder};
+use actix_web::rt::spawn;
+use serde_json::json;
 
 use crate::db::DbError;
 use crate::models::{
@@ -51,9 +53,25 @@ pub async fn create_card(
     if let Some(ref labels) = body.labels {
         card.labels = labels.clone();
     }
+    if let Some(ref status) = body.status {
+        card.status = status.clone();
+    }
 
     match state.db.create_card(&card).await {
-        Ok(card) => created(card),
+        Ok(card) => {
+            // Spawn automation runner for card_created trigger (non-blocking)
+            let db = state.db.clone();
+            let list_id = card.list_id.clone();
+            let card_id = card.id.clone();
+            spawn(async move {
+                if let Ok(list) = db.get_list(&list_id).await {
+                    let ctx = json!({ "card_id": card_id });
+                    let _ = db.run_automations_for_trigger(&list.board_id, "card_created", ctx).await;
+                }
+            });
+
+            created(card)
+        }
         Err(e) => internal_error_logged("Failed to create card", e),
     }
 }
@@ -79,6 +97,7 @@ pub async fn update_card(
             body.labels.clone(),
             body.archived,
             body.list_id.clone(),
+            body.status.clone(),
         )
         .await
     {
@@ -107,7 +126,20 @@ pub async fn move_card(
         .move_card(&body.card_id, &body.target_list_id, body.position)
         .await
     {
-        Ok(card) => ok(card),
+        Ok(card) => {
+            // Spawn automation runner for card_moved trigger
+            let db = state.db.clone();
+            let target_list_id = body.target_list_id.clone();
+            let card_id = body.card_id.clone();
+            spawn(async move {
+                if let Ok(list) = db.get_list(&target_list_id).await {
+                    let ctx = json!({ "card_id": card_id, "target_list_id": target_list_id });
+                    let _ = db.run_automations_for_trigger(&list.board_id, "card_moved", ctx).await;
+                }
+            });
+
+            ok(card)
+        }
         Err(DbError::NotFound) => not_found("Card"),
         Err(e) => internal_error_logged("Failed to move card", e),
     }
