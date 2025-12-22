@@ -15,6 +15,7 @@ pub struct AutomationRule {
     pub trigger_config: serde_json::Value,
     pub action_type: String,
     pub action_config: serde_json::Value,
+    pub last_run_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,6 +39,7 @@ impl AutomationRule {
             trigger_config,
             action_type,
             action_config,
+            last_run_at: None,
             created_at: now,
             updated_at: now,
         }

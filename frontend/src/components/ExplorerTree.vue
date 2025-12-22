@@ -167,39 +167,81 @@
           </div>
         </div>
 
-        <template v-if="explorerStore.boardsList.length > 0">
-          <ExplorerTreeNode
-            v-for="item in explorerStore.boardsList"
-            :key="item.id"
-            :item="item"
-            :depth="0"
-            @select="handleBoardItemSelect"
-            @toggle="handleBoardToggle"
-            @dblclick="handleBoardItemDoubleClick"
-            @create-note="() => {}"
-            @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
-            @rename="(item: ExplorerItem) => $emit('rename', item)"
-            @delete="(item: ExplorerItem) => $emit('delete', item)"
-            @toggle-importance="handleToggleBoardImportance"
-            @toggle-urgent="handleToggleBoardUrgent"
-            @move-item="handleMoveItem"
-          />
-          <!-- Root drop zone at the bottom -->
-          <div 
-            v-if="isBoardsRootDropTarget" 
-            class="root-drop-indicator"
-          >
-            Drop here to move to root
-          </div>
-        </template>
-        </div>
-        <div v-else class="tree-empty">
-          <Icon name="board" :size="32" />
-          <span>No boards yet</span>
-          <button class="btn btn-primary btn-sm" @click="$emit('create-board', null)">
-            Create your first board
-          </button>
-        </div>
+            <div class="boards-section">
+              <template v-if="showBoardsHeader">
+                <div class="boards-header" @click="toggleBoardsSection">
+                  <span class="expand-toggle">
+                    <Icon :name="boardsSectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+                  </span>
+                  <Icon name="board" :size="14" />
+                  <span class="boards-title">Boards</span>
+                  <span class="boards-count">{{ explorerStore.boardsList.length }}</span>
+                </div>
+
+                <div v-if="boardsSectionExpanded">
+                  <template v-if="explorerStore.boardsList.length > 0">
+                    <ExplorerTreeNode
+                      v-for="item in explorerStore.boardsList"
+                      :key="item.id"
+                      :item="item"
+                      :depth="0"
+                      @select="handleBoardItemSelect"
+                      @toggle="handleBoardToggle"
+                      @dblclick="handleBoardItemDoubleClick"
+                      @create-note="() => {}"
+                      @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
+                      @rename="(item: ExplorerItem) => $emit('rename', item)"
+                      @delete="(item: ExplorerItem) => $emit('delete', item)"
+                      @toggle-importance="handleToggleBoardImportance"
+                      @toggle-urgent="handleToggleBoardUrgent"
+                      @move-item="handleMoveItem"
+                    />
+                    <!-- Root drop zone at the bottom -->
+                    <div 
+                      v-if="isBoardsRootDropTarget" 
+                      class="root-drop-indicator"
+                    >
+                      Drop here to move to root
+                    </div>
+                  </template>
+                  <div v-else class="tree-empty">
+                    <Icon name="board" :size="32" />
+                    <span>No boards yet</span>
+                    <button class="btn btn-primary btn-sm" @click="$emit('create-board', null)">
+                      Create your first board
+                    </button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- If parent requests no header, render boards list directly -->
+              <template v-else>
+                <template v-if="explorerStore.boardsList.length > 0">
+                  <ExplorerTreeNode
+                    v-for="item in explorerStore.boardsList"
+                    :key="item.id"
+                    :item="item"
+                    :depth="0"
+                    @select="handleBoardItemSelect"
+                    @toggle="handleBoardToggle"
+                    @dblclick="handleBoardItemDoubleClick"
+                    @create-note="() => {}"
+                    @create-folder="(parentId: string | null) => $emit('create-board-folder', parentId)"
+                    @rename="(item: ExplorerItem) => $emit('rename', item)"
+                    @delete="(item: ExplorerItem) => $emit('delete', item)"
+                    @toggle-importance="handleToggleBoardImportance"
+                    @toggle-urgent="handleToggleBoardUrgent"
+                    @move-item="handleMoveItem"
+                  />
+                  <div v-if="isBoardsRootDropTarget" class="root-drop-indicator">Drop here to move to root</div>
+                </template>
+                <div v-else class="tree-empty">
+                  <Icon name="board" :size="32" />
+                  <span>No boards yet</span>
+                  <button class="btn btn-primary btn-sm" @click="$emit('create-board', null)">Create your first board</button>
+                </div>
+              </template>
+            </div>
       </div>
     </div>
   </div>
@@ -213,12 +255,48 @@ import ExplorerTreeNode from './ExplorerTreeNode.vue'
 import Icon from './Icon.vue'
 
 const props = defineProps<{
-  defaultTab?: 'notes' | 'boards'
+  defaultTab?: 'notes' | 'boards',
+  showBoardsHeader?: boolean
 }>()
+
+// If parent doesn't specify, show the boards header by default
+const showBoardsHeader = props.showBoardsHeader === undefined ? true : props.showBoardsHeader
 
 const explorerStore = useExplorerStore()
 const router = useRouter()
 const route = useRoute()
+
+// Boards section collapsed state (persist in localStorage so user preference survives reload)
+const BOARDS_SECTION_KEY = 'boardsSectionExpanded'
+const boardsSectionExpanded = ref<boolean>(true)
+
+function loadBoardsSectionState() {
+  try {
+    const v = localStorage.getItem(BOARDS_SECTION_KEY)
+    if (v === null) {
+      boardsSectionExpanded.value = true
+    } else {
+      boardsSectionExpanded.value = v === '1' || v === 'true'
+    }
+  } catch (e) {
+    boardsSectionExpanded.value = true
+  }
+}
+
+function saveBoardsSectionState() {
+  try {
+    localStorage.setItem(BOARDS_SECTION_KEY, boardsSectionExpanded.value ? '1' : '0')
+  } catch (e) {
+    // ignore
+  }
+}
+
+function toggleBoardsSection() {
+  boardsSectionExpanded.value = !boardsSectionExpanded.value
+  saveBoardsSectionState()
+}
+
+loadBoardsSectionState()
 
 // Boards are rendered directly (no separate expanded state persisted)
 
@@ -826,6 +904,47 @@ function onBoardsRootDrop(event: DragEvent) {
 
 .favorites-items {
   /* Items are already indented via depth prop */
+}
+
+.boards-section {
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.boards-header {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-secondary);
+}
+
+.boards-header .expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.boards-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.boards-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  padding: 0 6px;
+  border-radius: 10px;
 }
 
 .root-drop-indicator {
