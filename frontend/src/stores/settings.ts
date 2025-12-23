@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { settingsApi } from '@/api/settings'
+import logger from '@/utils/logger'
 
 export interface IcsCalendar {
   id: string
@@ -87,7 +88,7 @@ export const useSettingsStore = defineStore('settings', () => {
         return JSON.parse(stored)
       }
     } catch (e) {
-      console.error('Failed to load settings:', e)
+      logger.error('Failed to load settings:', e)
     }
     return { icsCalendars: [], weekStartsOnMonday: true }
   }
@@ -113,7 +114,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }))
       })
     } catch (e) {
-      console.error('Failed to save settings to server:', e)
+      logger.error('Failed to save settings to server:', e)
     }
   }
 
@@ -143,7 +144,7 @@ export const useSettingsStore = defineStore('settings', () => {
       saveSettings()
       serverInitialized.value = true
     } catch (e) {
-      console.error('Failed to load settings from server:', e)
+      logger.error('Failed to load settings from server:', e)
     }
   }
 
@@ -350,7 +351,7 @@ export const useSettingsStore = defineStore('settings', () => {
         return { date: new Date(targetTimestamp), allDay }
       } catch (e) {
         // If timezone parsing fails, treat as local time
-        console.warn(`Failed to parse timezone ${tzidMatch[1]}, using local time`)
+        logger.warn(`Failed to parse timezone ${tzidMatch[1]}, using local time`)
         return { date: new Date(year, month, day, hour, minute, second), allDay }
       }
     }
@@ -434,7 +435,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // Update cache time
       lastFetchTime.value.set(calendar.id, Date.now())
     } catch (error) {
-      console.error(`Failed to fetch ICS calendar ${calendar.name}:`, error)
+      logger.error(`Failed to fetch ICS calendar ${calendar.name}:`, error)
       calendarErrors.value.set(calendar.id, error instanceof Error ? error.message : 'Failed to fetch calendar')
     } finally {
       fetchingCalendars.value.delete(calendar.id)

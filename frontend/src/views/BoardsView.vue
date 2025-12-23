@@ -82,6 +82,7 @@ import { useRouter } from 'vue-router'
 import { boardsApi } from '../api'
 import { formatDate } from '../composables'
 import type { Board } from '../types'
+import logger from '@/utils/logger'
 
 const router = useRouter()
 const boards = ref<Board[]>([])
@@ -98,7 +99,7 @@ const fetchBoards = async () => {
     const response = await boardsApi.getAll()
     boards.value = response.data
   } catch (error) {
-    console.error('Failed to fetch boards:', error)
+    logger.error('Failed to fetch boards:', error)
   }
 }
 
@@ -109,7 +110,7 @@ const createBoard = async () => {
     newBoard.value = { name: '', description: '', color: '#3498db' }
     await fetchBoards()
   } catch (error) {
-    console.error('Failed to create board:', error)
+    logger.error('Failed to create board:', error)
   }
 }
 

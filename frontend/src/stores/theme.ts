@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { settingsApi } from '@/api/settings'
+import logger from '@/utils/logger'
 
 export type ThemeName = 'dark' | 'light' | 'midnight' | 'forest' | 'ocean' | 'sunset'
 
@@ -259,7 +260,7 @@ export const useThemeStore = defineStore('theme', () => {
       try {
         await settingsApi.update({ theme: themeName })
       } catch (e) {
-        console.error('Failed to save theme to server:', e)
+        logger.error('Failed to save theme to server:', e)
       }
     }
   }
@@ -284,7 +285,7 @@ export const useThemeStore = defineStore('theme', () => {
       }
       initialized.value = true
     } catch (e) {
-      console.error('Failed to load theme from server:', e)
+      logger.error('Failed to load theme from server:', e)
     }
   }
 

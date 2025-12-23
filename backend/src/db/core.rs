@@ -87,7 +87,17 @@ impl Database {
     }
 
     async fn run_migrations(pool: &PgPool) -> DbResult<()> {
-        // Users table
+        Self::create_users_table(pool).await?;
+        Self::create_notes_tables(pool).await?;
+        Self::create_boards_tables(pool).await?;
+        Self::create_automations_table(pool).await?;
+        Self::create_settings_table(pool).await?;
+        Self::create_reminders_table(pool).await?;
+        Self::create_indexes(pool).await?;
+        Ok(())
+    }
+
+    async fn create_users_table(pool: &PgPool) -> DbResult<()> {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -102,7 +112,10 @@ impl Database {
         )
         .execute(pool)
         .await?;
+        Ok(())
+    }
 
+    async fn create_notes_tables(pool: &PgPool) -> DbResult<()> {
         // Notes table with user_id
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS notes (
@@ -230,6 +243,10 @@ impl Database {
             .execute(pool)
             .await;
 
+        Ok(())
+    }
+
+    async fn create_boards_tables(pool: &PgPool) -> DbResult<()> {
         // Boards table with user_id
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS boards (
@@ -311,9 +328,6 @@ impl Database {
         .execute(pool)
         .await;
 
-        // Add foreign key to boards for folder_id after board_folders table exists
-        // Note: We can't add FK constraint with ALTER TABLE IF NOT EXISTS easily, so we just ensure the column exists
-
         // Lists table
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS lists (
@@ -381,6 +395,10 @@ impl Database {
         .execute(pool)
         .await?;
 
+        Ok(())
+    }
+
+    async fn create_automations_table(pool: &PgPool) -> DbResult<()> {
         // Automation rules table
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS automation_rules (
@@ -400,6 +418,15 @@ impl Database {
         .execute(pool)
         .await?;
 
+        // Add last_run_at column if it doesn't exist (migration)
+        let _ = sqlx::query("ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ")
+            .execute(pool)
+            .await;
+
+        Ok(())
+    }
+
+    async fn create_settings_table(pool: &PgPool) -> DbResult<()> {
         // User settings table
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS user_settings (
@@ -414,6 +441,10 @@ impl Database {
         .execute(pool)
         .await?;
 
+        Ok(())
+    }
+
+    async fn create_reminders_table(pool: &PgPool) -> DbResult<()> {
         // Reminders table for calendar reminders and note links
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS reminders (
@@ -431,6 +462,10 @@ impl Database {
         .execute(pool)
         .await?;
 
+        Ok(())
+    }
+
+    async fn create_indexes(pool: &PgPool) -> DbResult<()> {
         // Indexes
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
             .execute(pool)
@@ -509,11 +544,6 @@ impl Database {
             .await;
 
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_automation_rules ON automation_rules(board_id)")
-            .execute(pool)
-            .await;
-
-        // Add last_run_at column if it doesn't exist (migration)
-        let _ = sqlx::query("ALTER TABLE automation_rules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ")
             .execute(pool)
             .await;
 

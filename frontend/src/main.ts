@@ -6,6 +6,7 @@ import './style.css'
 import './styles/index.css'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
+import logger from '@/utils/logger'
 
 const app = createApp(App)
 
@@ -21,7 +22,7 @@ try {
 	theme.applyTheme()
 } catch (e) {
 	// If Pinia isn't ready yet, skip silently — theme will apply when store is used
-	console.warn('Theme initialization skipped:', e)
+	logger.warn('Theme initialization skipped:', e)
 }
 app.mount('#app')
 
@@ -46,5 +47,5 @@ try {
 	}, HEARTBEAT_MS)
 } catch (e) {
 	// If Pinia isn't ready yet (rare), skip proactive checks silently
-	console.warn('Auth heartbeat initialization skipped:', e)
+	logger.warn('Auth heartbeat initialization skipped:', e)
 }

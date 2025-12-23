@@ -67,6 +67,7 @@ import { useRouter } from 'vue-router'
 import { notesApi } from '../api'
 import { formatDate, getDescriptionPreview } from '../composables'
 import type { Note } from '../types'
+import logger from '@/utils/logger'
 
 const router = useRouter()
 const notes = ref<Note[]>([])
@@ -78,7 +79,7 @@ const fetchNotes = async () => {
     const response = await notesApi.getAll()
     notes.value = response.data
   } catch (error) {
-    console.error('Failed to fetch notes:', error)
+    logger.error('Failed to fetch notes:', error)
   }
 }
 
@@ -90,7 +91,7 @@ const createNote = async () => {
     // Navigate to the new note to add content
     router.push(`/notes/${response.data.id}`)
   } catch (error) {
-    console.error('Failed to create note:', error)
+    logger.error('Failed to create note:', error)
   }
 }
 

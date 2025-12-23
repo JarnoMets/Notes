@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Note, NoteFolder, Board, BoardFolder } from '../types'
 import { notesApi, foldersApi, boardsApi, boardFoldersApi } from '../api'
+import logger from '@/utils/logger'
 
 export interface ExplorerItem {
   id: string
@@ -265,7 +266,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       folders.value = response.data.folders
       notes.value = response.data.notes
     } catch (error) {
-      console.error('Failed to fetch notes tree:', error)
+      logger.error('Failed to fetch notes tree:', error)
     }
   }
   
@@ -281,7 +282,7 @@ export const useExplorerStore = defineStore('explorer', () => {
         boards.value = response.data
         boardFolders.value = []
       } catch (e) {
-        console.error('Failed to fetch boards:', e)
+        logger.error('Failed to fetch boards:', e)
       }
     }
   }
@@ -338,7 +339,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to create folder:', error)
+      logger.error('Failed to create folder:', error)
       throw error
     }
   }
@@ -352,7 +353,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to rename folder:', error)
+      logger.error('Failed to rename folder:', error)
       throw error
     }
   }
@@ -363,7 +364,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       folders.value = folders.value.filter(f => f.id !== id)
       notes.value = notes.value.filter(n => n.folder_id !== id)
     } catch (error) {
-      console.error('Failed to delete folder:', error)
+      logger.error('Failed to delete folder:', error)
       throw error
     }
   }
@@ -377,7 +378,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move folder:', error)
+      logger.error('Failed to move folder:', error)
       throw error
     }
   }
@@ -392,7 +393,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to create note:', error)
+      logger.error('Failed to create note:', error)
       throw error
     }
   }
@@ -406,7 +407,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to update note:', error)
+      logger.error('Failed to update note:', error)
       throw error
     }
   }
@@ -416,7 +417,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       await notesApi.delete(id)
       notes.value = notes.value.filter(n => n.id !== id)
     } catch (error) {
-      console.error('Failed to delete note:', error)
+      logger.error('Failed to delete note:', error)
       throw error
     }
   }
@@ -430,7 +431,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move note:', error)
+      logger.error('Failed to move note:', error)
       throw error
     }
   }
@@ -445,7 +446,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to create board:', error)
+      logger.error('Failed to create board:', error)
       throw error
     }
   }
@@ -459,7 +460,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to update board:', error)
+      logger.error('Failed to update board:', error)
       throw error
     }
   }
@@ -469,7 +470,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       await boardsApi.delete(id)
       boards.value = boards.value.filter(b => b.id !== id)
     } catch (error) {
-      console.error('Failed to delete board:', error)
+      logger.error('Failed to delete board:', error)
       throw error
     }
   }
@@ -483,7 +484,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move board:', error)
+      logger.error('Failed to move board:', error)
       throw error
     }
   }
@@ -498,7 +499,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to create board folder:', error)
+      logger.error('Failed to create board folder:', error)
       throw error
     }
   }
@@ -512,7 +513,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to rename board folder:', error)
+      logger.error('Failed to rename board folder:', error)
       throw error
     }
   }
@@ -524,7 +525,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       // Also remove boards in this folder (they become orphaned)
       boards.value = boards.value.filter(b => b.folder_id !== id)
     } catch (error) {
-      console.error('Failed to delete board folder:', error)
+      logger.error('Failed to delete board folder:', error)
       throw error
     }
   }
@@ -538,7 +539,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move board folder:', error)
+      logger.error('Failed to move board folder:', error)
       throw error
     }
   }
@@ -555,7 +556,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle folder importance:', error)
+      logger.error('Failed to toggle folder importance:', error)
       throw error
     }
   }
@@ -571,7 +572,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle note importance:', error)
+      logger.error('Failed to toggle note importance:', error)
       throw error
     }
   }
@@ -588,7 +589,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle note urgent:', error)
+      logger.error('Failed to toggle note urgent:', error)
       throw error
     }
   }
@@ -604,7 +605,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle folder urgent:', error)
+      logger.error('Failed to toggle folder urgent:', error)
       throw error
     }
   }
@@ -620,7 +621,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle board urgent:', error)
+      logger.error('Failed to toggle board urgent:', error)
       throw error
     }
   }
@@ -636,7 +637,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle board folder urgent:', error)
+      logger.error('Failed to toggle board folder urgent:', error)
       throw error
     }
   }
@@ -653,7 +654,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle board importance:', error)
+      logger.error('Failed to toggle board importance:', error)
       throw error
     }
   }
@@ -669,7 +670,7 @@ export const useExplorerStore = defineStore('explorer', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle board folder importance:', error)
+      logger.error('Failed to toggle board folder importance:', error)
       throw error
     }
   }

@@ -40,6 +40,7 @@
         @dragover.prevent="onNotesRootDragOver"
         @dragleave="onNotesRootDragLeave"
         @drop.prevent="onNotesRootDrop"
+        @contextmenu.prevent="openRootContextMenu($event)"
         :class="{ 'root-drop-active': isNotesRootDropTarget }"
       >
         <!-- Favorites Section -->
@@ -131,6 +132,7 @@
         @dragover.prevent="onBoardsRootDragOver"
         @dragleave="onBoardsRootDragLeave"
         @drop.prevent="onBoardsRootDrop"
+        @contextmenu.prevent="openRootContextMenu($event)"
         :class="{ 'root-drop-active': isBoardsRootDropTarget }"
       >
         <!-- Boards: render favorites and boards list directly (no collapsible parent) -->
@@ -249,10 +251,12 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted } from 'vue'
-import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
+import { useExplorerStore, type ExplorerItem } from '@/stores/explorer'
 import { useRouter, useRoute } from 'vue-router'
 import ExplorerTreeNode from './ExplorerTreeNode.vue'
 import Icon from './Icon.vue'
+import logger from '@/utils/logger'
+import { openFloatingMenu } from '@/utils/floatingMenu'
 
 const props = defineProps<{
   defaultTab?: 'notes' | 'boards',
@@ -351,6 +355,28 @@ const emit = defineEmits<{
   'open-note': [noteId: string]
   'open-board': [boardId: string]
 }>()
+
+// Close any floating context menus created by direct DOM manipulation
+function openRootContextMenu(event: MouseEvent) {
+  try {
+    const items: Array<import('@/utils/floatingMenu').FloatingMenuItem> = []
+    if (activeTab.value === 'notes') {
+      items.push({ label: 'New Note', action: () => emit('create-note', getTargetFolderId()) })
+      items.push({ label: 'New Folder', action: () => emit('create-folder', getTargetFolderId()) })
+      items.push({ divider: true })
+      items.push({ label: 'Refresh', action: () => explorerStore.fetchNotes() })
+    } else {
+      items.push({ label: 'New Board', action: () => emit('create-board', getTargetBoardFolderId()) })
+      items.push({ label: 'New Folder', action: () => emit('create-board-folder', getTargetBoardFolderId()) })
+      items.push({ divider: true })
+      items.push({ label: 'Refresh', action: () => explorerStore.fetchBoards() })
+    }
+
+    openFloatingMenu(items, event.clientX, event.clientY)
+  } catch (e) {
+    logger.error('openRootContextMenu failed', e)
+  }
+}
 
 function handleSelect(item: ExplorerItem) {
   explorerStore.selectItem(item.id, item.type as 'note' | 'folder' | 'board' | 'board-folder')
@@ -579,7 +605,7 @@ async function handleMoveItem(data: MoveItemData) {
       await explorerStore.fetchBoards()
     }
   } catch (error) {
-    console.error('Failed to move item:', error)
+    logger.error('Failed to move item:', error)
   }
 }
 
@@ -595,7 +621,7 @@ async function handleToggleImportance(item: ExplorerItem) {
       await explorerStore.toggleBoardFolderImportance(item.id)
     }
   } catch (error) {
-    console.error('Failed to toggle importance:', error)
+    logger.error('Failed to toggle importance:', error)
   }
 }
 
@@ -611,7 +637,7 @@ async function handleToggleUrgent(item: ExplorerItem) {
       await explorerStore.toggleBoardFolderUrgent(item.id)
     }
   } catch (error) {
-    console.error('Failed to toggle urgent:', error)
+    logger.error('Failed to toggle urgent:', error)
   }
 }
 
@@ -623,7 +649,7 @@ async function handleToggleBoardImportance(item: ExplorerItem) {
       await explorerStore.toggleBoardFolderImportance(item.id)
     }
   } catch (error) {
-    console.error('Failed to toggle board importance:', error)
+    logger.error('Failed to toggle board importance:', error)
   }
 }
 
@@ -635,7 +661,7 @@ async function handleToggleBoardUrgent(item: ExplorerItem) {
       await explorerStore.toggleBoardUrgent(item.id)
     }
   } catch (error) {
-    console.error('Failed to toggle board urgent:', error)
+    logger.error('Failed to toggle board urgent:', error)
   }
 }
 
@@ -695,7 +721,7 @@ function onNotesRootDrop(event: DragEvent) {
       insertBeforeId: null
     })
   } catch (e) {
-    console.error('Failed to parse drag data:', e)
+    logger.error('Failed to parse drag data:', e)
   }
 }
 
@@ -753,7 +779,7 @@ function onBoardsRootDrop(event: DragEvent) {
       insertBeforeId: null
     })
   } catch (e) {
-    console.error('Failed to parse drag data:', e)
+    logger.error('Failed to parse drag data:', e)
   }
 }
 </script>

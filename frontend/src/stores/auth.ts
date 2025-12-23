@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User, AuthResponse, LoginRequest, RegisterRequest } from '../types'
 import api from '../api'
+import logger from '@/utils/logger'
 
 const TOKEN_KEY = 'notes_auth_token'
 const USER_KEY = 'notes_user'
@@ -87,7 +88,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await api.get<{ url: string }>('/auth/google/url')
       return response.data.url
     } catch (e) {
-      console.error('Failed to get Google auth URL:', e)
+      logger.error('Failed to get Google auth URL:', e)
       return null
     }
   }
@@ -115,7 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await api.get<StorageInfo>('/auth/storage')
       storageInfo.value = response.data
     } catch (e) {
-      console.error('Failed to fetch storage info:', e)
+      logger.error('Failed to fetch storage info:', e)
     }
   }
 

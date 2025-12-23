@@ -340,6 +340,7 @@ import TextAlign from '@tiptap/extension-text-align'
 import { Extension } from '@tiptap/vue-3'
 import { notesApi } from '../api'
 import type { NoteWithAttachments, NoteAttachment } from '../types'
+import logger from '@/utils/logger'
 
 // Custom Spoiler Extension
 const Spoiler = Extension.create({
@@ -447,7 +448,7 @@ const fetchNote = async () => {
       editor.value.commands.setContent(note.value.content || '')
     }
   } catch (error) {
-    console.error('Failed to fetch note:', error)
+    logger.error('Failed to fetch note:', error)
     router.push('/notes')
   }
 }
@@ -473,7 +474,7 @@ const saveNote = async () => {
       content: content
     })
   } catch (error) {
-    console.error('Failed to save note:', error)
+    logger.error('Failed to save note:', error)
   } finally {
     saving.value = false
   }
@@ -489,7 +490,7 @@ const deleteNote = async () => {
     await explorerStore.fetchNotes()
     router.push('/notes')
   } catch (error) {
-    console.error('Failed to delete note:', error)
+    logger.error('Failed to delete note:', error)
   }
 }
 
@@ -562,7 +563,7 @@ const handleFileUpload = async (event: Event) => {
       note.value.attachments = response.data
     }
   } catch (error) {
-    console.error('Failed to upload files:', error)
+    logger.error('Failed to upload files:', error)
     alert('Failed to upload files')
   }
   
@@ -583,7 +584,7 @@ const downloadAttachment = async (attachment: NoteAttachment) => {
     window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
   } catch (error) {
-    console.error('Failed to download attachment:', error)
+    logger.error('Failed to download attachment:', error)
   }
 }
 
@@ -596,7 +597,7 @@ const deleteAttachment = async (attachment: NoteAttachment) => {
       note.value.attachments = note.value.attachments.filter(a => a.id !== attachment.id)
     }
   } catch (error) {
-    console.error('Failed to delete attachment:', error)
+    logger.error('Failed to delete attachment:', error)
   }
 }
 

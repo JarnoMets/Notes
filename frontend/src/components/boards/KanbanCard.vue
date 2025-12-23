@@ -13,6 +13,8 @@
     @drop.stop="$emit('drop', $event)"
     @click="$emit('click')"
   >
+      <!-- Done badge -->
+      <span v-if="card.status === 'done'" class="card-done-badge">Done</span>
     <!-- Note link indicator -->
     <div v-if="hasNoteLinks" class="card-links">
       <span class="link-indicator" title="Has linked notes">
@@ -44,7 +46,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Card, BoardLabel } from '../../types'
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 const props = defineProps<{
   card: Card
@@ -83,7 +85,7 @@ const formattedDate = computed(() => {
 const isOverdue = computed(() => {
   if (!props.card.due_date) return false
   // If card status is 'done' treat as not overdue
-  if ((props.card as any).status === 'done') return false
+  if (props.card.status === 'done') return false
   return new Date(props.card.due_date) < new Date()
 })
 
@@ -112,6 +114,24 @@ function getLabelName(labelId: string): string {
 .kanban-card:hover {
   border-color: var(--accent);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Small done badge */
+.card-done-badge {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.375rem; /* KanbanCard doesn't render edit button by default, keep small offset */
+  background: var(--success);
+  color: #fff;
+  font-size: 11px;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  z-index: 8;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .kanban-card h4 {

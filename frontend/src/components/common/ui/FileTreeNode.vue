@@ -116,9 +116,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useNotesStore } from '../stores/notes'
+import { useNotesStore } from '@/stores/notes'
 import { storeToRefs } from 'pinia'
 import Icon from './Icon.vue'
+import logger from '@/utils/logger'
 
 interface TreeItem {
   id: string
@@ -302,7 +303,7 @@ function handleDrop(event: DragEvent) {
       dropPosition: currentDropPosition || 'after'
     })
   } catch (e) {
-    console.error('Failed to parse drag data:', e)
+    logger.error('Failed to parse drag data:', e)
   }
 }
 

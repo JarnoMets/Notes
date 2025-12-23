@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Note, NoteFolder, NotesTree, NoteWithAttachments } from '../types'
 import { notesApi, foldersApi } from '../api'
+import logger from '@/utils/logger'
 import { useExplorerStore } from './explorer'
 
 export interface OpenTab {
@@ -50,7 +51,7 @@ export const useNotesStore = defineStore('notes', () => {
       folders.value = tree.folders
       notes.value = tree.notes
     } catch (error) {
-      console.error('Failed to fetch notes tree:', error)
+      logger.error('Failed to fetch notes tree:', error)
     }
   }
 
@@ -77,7 +78,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to create folder:', error)
+      logger.error('Failed to create folder:', error)
       throw error
     }
   }
@@ -91,7 +92,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to rename folder:', error)
+      logger.error('Failed to rename folder:', error)
       throw error
     }
   }
@@ -107,7 +108,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle folder importance:', error)
+      logger.error('Failed to toggle folder importance:', error)
       throw error
     }
   }
@@ -119,7 +120,7 @@ export const useNotesStore = defineStore('notes', () => {
       // Also remove notes in the folder from cache
       notes.value = notes.value.filter(n => n.folder_id !== id)
     } catch (error) {
-      console.error('Failed to delete folder:', error)
+      logger.error('Failed to delete folder:', error)
       throw error
     }
   }
@@ -133,7 +134,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move folder:', error)
+      logger.error('Failed to move folder:', error)
       throw error
     }
   }
@@ -150,7 +151,7 @@ export const useNotesStore = defineStore('notes', () => {
       openNote(response.data.id)
       return response.data
     } catch (error) {
-      console.error('Failed to create note:', error)
+      logger.error('Failed to create note:', error)
       throw error
     }
   }
@@ -168,7 +169,7 @@ export const useNotesStore = defineStore('notes', () => {
         }
       })
     } catch (error) {
-      console.error('Failed to delete note:', error)
+      logger.error('Failed to delete note:', error)
       throw error
     }
   }
@@ -182,7 +183,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to move note:', error)
+      logger.error('Failed to move note:', error)
       throw error
     }
   }
@@ -198,7 +199,7 @@ export const useNotesStore = defineStore('notes', () => {
       noteCache.value.set(id, response.data)
       return response.data
     } catch (error) {
-      console.error('Failed to fetch note:', error)
+      logger.error('Failed to fetch note:', error)
       return null
     }
   }
@@ -227,7 +228,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to update note:', error)
+      logger.error('Failed to update note:', error)
       throw error
     }
   }
@@ -239,7 +240,7 @@ export const useNotesStore = defineStore('notes', () => {
       invalidateNoteCache(id)
       return response.data
     } catch (error) {
-      console.error('Failed to undo note:', error)
+      logger.error('Failed to undo note:', error)
       throw error
     }
   }
@@ -250,7 +251,7 @@ export const useNotesStore = defineStore('notes', () => {
       invalidateNoteCache(id)
       return response.data
     } catch (error) {
-      console.error('Failed to redo note:', error)
+      logger.error('Failed to redo note:', error)
       throw error
     }
   }
@@ -272,7 +273,7 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      console.error('Failed to toggle note importance:', error)
+      logger.error('Failed to toggle note importance:', error)
       throw error
     }
   }

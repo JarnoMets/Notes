@@ -232,11 +232,12 @@ import { useRouter } from 'vue-router'
 import { useNotesStore } from '../stores/notes'
 import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
 import { storeToRefs } from 'pinia'
-import NoteEditor from '../components/NoteEditor.vue'
-import ExplorerTree from '../components/ExplorerTree.vue'
-import Icon from '../components/Icon.vue'
-import ConfirmModal from '../components/ConfirmModal.vue'
-import PromptModal from '../components/PromptModal.vue'
+import logger from '@/utils/logger'
+import NoteEditor from '../components/editor/NoteEditor.vue'
+import ExplorerTree from '../components/common/ui/ExplorerTree.vue'
+import Icon from '../components/common/ui/Icon.vue'
+import ConfirmModal from '../components/common/modals/ConfirmModal.vue'
+import PromptModal from '../components/common/modals/PromptModal.vue'
 import {
   TabBar,
   WorkspaceSidebar,
@@ -418,7 +419,7 @@ async function saveBoardModal() {
     )
     boardModal.value.visible = false
   } catch (error) {
-    console.error('Failed to create board:', error)
+    logger.error('Failed to create board:', error)
   }
 }
 
@@ -505,7 +506,7 @@ async function handleDrop(data: { draggedId: string; draggedType: 'note' | 'fold
       await explorerStore.fetchBoards()
     }
   } catch (error) {
-    console.error('Failed to move item:', error)
+    logger.error('Failed to move item:', error)
   }
 }
 
@@ -540,6 +541,42 @@ async function createNewNote() {
     placeholder: 'Enter note name',
     action: 'note',
     parentId: null
+  }
+}
+
+// Persistence for notes workspace (open tabs / panes)
+const NOTES_VIEW_KEY = 'viewState.notes'
+
+function loadNotesViewState() {
+  try {
+    const raw = localStorage.getItem(NOTES_VIEW_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data.panes && Array.isArray(data.panes)) {
+      // Replace store panes
+      notesStore.panes = data.panes
+    }
+    if (data.activePaneId) notesStore.activePaneId = data.activePaneId
+    if (data.splitDirection) notesStore.splitDirection = data.splitDirection
+    if (typeof data.sidebarWidth === 'number') sidebarWidth.value = data.sidebarWidth
+    if (typeof data.isMobileSidebarOpen === 'boolean') isMobileSidebarOpen.value = data.isMobileSidebarOpen
+  } catch (e) {
+    // ignore parse errors
+  }
+}
+
+function saveNotesViewState() {
+  try {
+    const data: any = {
+      panes: notesStore.panes,
+      activePaneId: notesStore.activePaneId,
+      splitDirection: notesStore.splitDirection,
+      sidebarWidth: sidebarWidth.value,
+      isMobileSidebarOpen: isMobileSidebarOpen.value
+    }
+    localStorage.setItem(NOTES_VIEW_KEY, JSON.stringify(data))
+  } catch (e) {
+    // ignore
   }
 }
 
@@ -676,7 +713,7 @@ function onPaneDrop(event: DragEvent, paneId: string) {
         return
       }
     } catch (e) {
-      console.error('Failed to parse tree drag data:', e)
+      logger.error('Failed to parse tree drag data:', e)
     }
   }
   
@@ -709,7 +746,7 @@ function onTreeDropToTabs(event: DragEvent, paneId: string, insertIndex: number)
       localStorage.setItem('selectedBoardId', id)
     }
   } catch (e) {
-    console.error('Failed to parse tree drag data for tabs:', e)
+    logger.error('Failed to parse tree drag data for tabs:', e)
   }
 }
 
@@ -734,7 +771,7 @@ function onSplitDrop(event: DragEvent) {
       localStorage.setItem('selectedBoardId', id)
     }
   } catch (e) {
-    console.error('Failed to parse tree drag data for split:', e)
+    logger.error('Failed to parse tree drag data for split:', e)
   }
 }
 
@@ -804,9 +841,13 @@ onMounted(async () => {
     localStorage.removeItem('openNoteId')
     notesStore.openNote(requestedNoteId)
   }
+  // Restore saved UI state if present (open tabs / panes)
+  loadNotesViewState()
 })
 
 onUnmounted(() => {
+  // Persist open tabs / panes so switching back restores context
+  saveNotesViewState()
   document.removeEventListener('click', onDocumentClick)
 })
 </script>

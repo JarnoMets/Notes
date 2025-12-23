@@ -1,0 +1,256 @@
+.calendar-view {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+}
+
+/* Sidebar */
+.calendar-sidebar {
+  width: 280px;
+  border-right: 1px solid var(--border-primary);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  transition: width 0.2s ease;
+}
+
+.calendar-sidebar.collapsed {
+  width: 48px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.sidebar-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.collapse-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+}
+
+.collapse-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.boards-spoiler-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+.boards-spoiler-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.boards-spoiler-btn Icon {
+  pointer-events: none;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+/* Mini Calendar Widget */
+.mini-calendar-widget {
+  margin-bottom: 1.5rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.mini-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.mini-month-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.mini-month-title:hover {
+  background: var(--bg-hover);
+}
+
+.mini-month-title .mini-chevron {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s;
+}
+
+.mini-month-title.picker-open .mini-chevron {
+  transform: rotate(180deg);
+}
+
+.mini-nav-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mini-nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* Mini Calendar Picker */
+.mini-calendar-picker {
+  padding: 0.5rem 0;
+}
+
+.picker-year-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.picker-year {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.picker-nav-btn {
+  background: none;
+  border: none;
+  padding: 0.25rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.picker-nav-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.picker-months-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.picker-month {
+  padding: 0.5rem 0.25rem;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  transition: all 0.15s;
+}
+
+.picker-month:hover {
+  background: var(--bg-hover);
+}
+
+.picker-month.current {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.picker-month.selected {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.2);
+  color: var(--accent);
+}
+
+.mini-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.mini-day-header {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.25rem 0;
+}
+
+.mini-day {
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.25rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  color: var(--text-primary);
+}
+
+.mini-day:hover {
+  background: var(--bg-hover);
+}
+
+.mini-day.other-month {
+  color: var(--text-muted);
+}
+
+.mini-day.today {
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+
+.mini-day.selected:not(.today) {
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.25);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mini-day.today.selected {
+  background: var(--accent);
+}
+
+/* rest of calendar styles... */
