@@ -322,6 +322,13 @@ export class BBCodeRenderer {
       th: (node) => `<th>${this.renderContent(node.content)}</th>`,
       hr: () => '<hr />',
       br: () => '<br />',
+      graph: (node) => {
+        const graphId = node.attrs?.value || ''
+        // Extract text content from children nodes
+        const graphTitle = this.renderContent(node.content).replace(/<[^>]*>/g, '') // Strip HTML tags
+        const displayText = graphTitle ? `[${graphTitle}]` : `[Graph: ${graphId}]`
+        return `<a href="javascript:void(0)" class="bbcode-link bbcode-graph-link" data-graph-id="${graphId}" onclick="window.__openGraph?.('${graphId}'); return false">${displayText}</a>`
+      },
     }
   }
 

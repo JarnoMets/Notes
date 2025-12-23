@@ -1,31 +1,8 @@
 <template>
   <div class="app" :class="['theme-' + themeStore.currentTheme]">
     <nav class="navbar" v-if="authStore.isAuthenticated">
-      <div class="nav-links">
-        <router-link to="/notes" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-            <polyline points="14 2 14 8 20 8"/>
-          </svg>
-          <span>Notes</span>
-        </router-link>
-        <router-link to="/boards" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-            <line x1="9" y1="3" x2="9" y2="21"/>
-            <line x1="15" y1="3" x2="15" y2="21"/>
-          </svg>
-          <span>Boards</span>
-        </router-link>
-        <router-link to="/calendar" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-            <line x1="16" y1="2" x2="16" y2="6"/>
-            <line x1="8" y1="2" x2="8" y2="6"/>
-            <line x1="3" y1="10" x2="21" y2="10"/>
-          </svg>
-          <span>Calendar</span>
-        </router-link>
+      <div class="nav-brand" style="flex: 1; font-weight: bold; font-size: 1.2rem;">
+        Notes
       </div>
       <div class="nav-right">
         <!-- Theme Switcher -->
@@ -155,6 +132,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore, themes, type ThemeName, type Theme } from './stores/theme'
 import { useSettingsStore } from './stores/settings'
+import { useNotesStore } from './stores/notes'
 import SettingsModal from './components/common/modals/SettingsModal.vue'
 
 const router = useRouter()
@@ -162,6 +140,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const settingsStore = useSettingsStore()
+const notesStore = useNotesStore()
 
 // Update document title when route changes
 watchEffect(() => {
@@ -219,6 +198,22 @@ function handleClickOutside(event: MouseEvent) {
     showUserMenu.value = false
   }
 }
+
+// Global handlers for BBCode links are now managed by MainLayout.vue
+/*
+;(window as any).__openNote = (noteId: string) => {
+  router.push('/notes')
+  notesStore.openNote(noteId)
+}
+
+;(window as any).__openBoard = (boardId: string) => {
+  router.push({ path: '/boards', query: { board: boardId } })
+}
+
+;(window as any).__openGraph = (graphId: string) => {
+  router.push({ path: '/graphs', query: { graph: graphId } })
+}
+*/
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)

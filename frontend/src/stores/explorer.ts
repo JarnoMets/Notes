@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Note, NoteFolder, Board, BoardFolder } from '../types'
-import { notesApi, foldersApi, boardsApi, boardFoldersApi } from '../api'
+import type { Note, NoteFolder, Board, BoardFolder, Graph, GraphFolder } from '../types'
+import { notesApi, foldersApi, boardsApi, boardFoldersApi, graphsApi, graphFoldersApi } from '../api'
 import logger from '@/utils/logger'
 
 export interface ExplorerItem {
   id: string
   name: string
-  type: 'folder' | 'note' | 'board' | 'board-folder' | 'favorites-folder'
+  type: 'folder' | 'note' | 'board' | 'board-folder' | 'graph' | 'graph-folder' | 'favorites-folder'
   parentId: string | null
   position: number
   isExpanded: boolean
@@ -24,16 +24,20 @@ export const useExplorerStore = defineStore('explorer', () => {
   const notes = ref<Note[]>([])
   const boards = ref<Board[]>([])
   const boardFolders = ref<BoardFolder[]>([])
+  const graphs = ref<Graph[]>([])
+  const graphFolders = ref<GraphFolder[]>([])
   
   // UI state
   const expandedFolders = ref<Set<string>>(new Set())
   const expandedBoardFolders = ref<Set<string>>(new Set())
+  const expandedGraphFolders = ref<Set<string>>(new Set())
   const expandedSections = ref({
     notes: true,
+    graphs: true,
     boards: true
   })
   const selectedItemId = ref<string | null>(null)
-  const selectedItemType = ref<'note' | 'folder' | 'board' | 'board-folder' | null>(null)
+  const selectedItemType = ref<'note' | 'folder' | 'board' | 'board-folder' | 'graph' | 'graph-folder' | null>(null)
   const favoritesFolderExpanded = ref(true)
   
   // Helper to check if a folder has urgent descendants
@@ -64,6 +68,23 @@ export const useExplorerStore = defineStore('explorer', () => {
     const subFolders = boardFolders.value.filter(f => f.parent_id === folderId)
     for (const sub of subFolders) {
       if (sub.is_urgent || checkBoardUrgentDescendants(sub.id)) {
+        return true
+      }
+    }
+    return false
+  }
+  
+  // Helper to check if a graph folder has urgent descendants
+  function checkGraphUrgentDescendants(folderId: string): boolean {
+    // Check graphs in this folder
+    const folderGraphs = graphs.value.filter(g => g.folder_id === folderId)
+    if (folderGraphs.some(g => g.is_urgent)) {
+      return true
+    }
+    // Check subfolders
+    const subFolders = graphFolders.value.filter(f => f.parent_id === folderId)
+    for (const sub of subFolders) {
+      if (sub.is_urgent || checkGraphUrgentDescendants(sub.id)) {
         return true
       }
     }
@@ -197,6 +218,40 @@ export const useExplorerStore = defineStore('explorer', () => {
       })
     }
     
+    // Add starred graphs
+    const starredGraphs = graphs.value.filter(g => g.is_important)
+    for (const graph of starredGraphs) {
+      items.push({
+        id: graph.id,
+        name: graph.name,
+        type: 'graph',
+        parentId: '__favorites__',
+        position: graph.position || 0,
+        isExpanded: false,
+        isImportant: true,
+        isUrgent: graph.is_urgent,
+        hasUrgentDescendant: false,
+        children: []
+      })
+    }
+    
+    // Add starred graph folders
+    const starredGraphFolders = graphFolders.value.filter(f => f.is_important)
+    for (const folder of starredGraphFolders) {
+      items.push({
+        id: folder.id,
+        name: folder.name,
+        type: 'graph-folder',
+        parentId: '__favorites__',
+        position: folder.position,
+        isExpanded: false,
+        isImportant: true,
+        isUrgent: folder.is_urgent,
+        hasUrgentDescendant: checkGraphUrgentDescendants(folder.id),
+        children: []
+      })
+    }
+    
     return items
   })
   
@@ -255,9 +310,63 @@ export const useExplorerStore = defineStore('explorer', () => {
     return buildBoardTree(null)
   })
   
+  // Build tree for graphs section
+  const graphsList = computed<ExplorerItem[]>(() => {
+    const buildGraphTree = (parentId: string | null): ExplorerItem[] => {
+      const items: ExplorerItem[] = []
+
+      // Add graph folders
+      const childFolders = graphFolders.value
+        .filter(f => f.parent_id === parentId)
+        .sort((a, b) => a.position - b.position)
+
+      for (const folder of childFolders) {
+        const children = buildGraphTree(folder.id)
+        const isUrgent = folder.is_urgent
+        const hasUrgentDescendant = !isUrgent && checkGraphUrgentDescendants(folder.id)
+        items.push({
+          id: folder.id,
+          name: folder.name,
+          type: 'graph-folder',
+          parentId: folder.parent_id,
+          position: folder.position,
+          isExpanded: expandedGraphFolders.value.has(folder.id),
+          isImportant: folder.is_important,
+          isUrgent,
+          hasUrgentDescendant,
+          children
+        })
+      }
+
+      // Add graphs
+      const childGraphs = graphs.value
+        .filter(g => (g.folder_id || null) === parentId)
+        .sort((a, b) => (a.position || 0) - (b.position || 0))
+
+      for (const graph of childGraphs) {
+        items.push({
+          id: graph.id,
+          name: graph.name,
+          type: 'graph',
+          parentId: graph.folder_id || null,
+          position: graph.position || 0,
+          isExpanded: false,
+          isImportant: graph.is_important,
+          isUrgent: graph.is_urgent,
+          hasUrgentDescendant: false,
+          children: []
+        })
+      }
+
+      return items
+    }
+
+    return buildGraphTree(null)
+  })
+  
   // Fetch all data
   async function fetchAll() {
-    await Promise.all([fetchNotesTree(), fetchBoardsTree()])
+    await Promise.all([fetchNotesTree(), fetchBoardsTree(), fetchGraphsTree()])
   }
   
   async function fetchNotesTree() {
@@ -287,6 +396,23 @@ export const useExplorerStore = defineStore('explorer', () => {
     }
   }
   
+  async function fetchGraphsTree() {
+    try {
+      const response = await graphsApi.getTree()
+      graphFolders.value = response.data.folders || []
+      graphs.value = response.data.graphs || []
+    } catch (error) {
+      // Fallback to simple getAll if tree endpoint doesn't exist yet
+      try {
+        const response = await graphsApi.getAll()
+        graphs.value = response.data
+        graphFolders.value = []
+      } catch (e) {
+        logger.error('Failed to fetch graphs:', e)
+      }
+    }
+  }
+  
   // Toggle functions
   function toggleFolder(folderId: string) {
     if (expandedFolders.value.has(folderId)) {
@@ -304,7 +430,15 @@ export const useExplorerStore = defineStore('explorer', () => {
     }
   }
   
-  function toggleSection(section: 'notes' | 'boards') {
+  function toggleGraphFolder(folderId: string) {
+    if (expandedGraphFolders.value.has(folderId)) {
+      expandedGraphFolders.value.delete(folderId)
+    } else {
+      expandedGraphFolders.value.add(folderId)
+    }
+  }
+  
+  function toggleSection(section: 'notes' | 'graphs' | 'boards') {
     expandedSections.value[section] = !expandedSections.value[section]
   }
   
@@ -679,14 +813,195 @@ export const useExplorerStore = defineStore('explorer', () => {
     favoritesFolderExpanded.value = !favoritesFolderExpanded.value
   }
   
+  // Graph operations
+  async function createGraph(name: string, description?: string, folderId?: string | null) {
+    try {
+      const response = await graphsApi.create({ name, description, folder_id: folderId })
+      graphs.value.push(response.data)
+      if (folderId) {
+        expandedGraphFolders.value.add(folderId)
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to create graph:', error)
+      throw error
+    }
+  }
+  
+  async function updateGraph(id: string, data: Partial<Graph>) {
+    try {
+      const response = await graphsApi.update(id, data)
+      const index = graphs.value.findIndex(g => g.id === id)
+      if (index !== -1) {
+        graphs.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to update graph:', error)
+      throw error
+    }
+  }
+  
+  async function deleteGraph(id: string) {
+    try {
+      await graphsApi.delete(id)
+      graphs.value = graphs.value.filter(g => g.id !== id)
+    } catch (error) {
+      logger.error('Failed to delete graph:', error)
+      throw error
+    }
+  }
+
+  async function moveGraph(id: string, folderId: string | null, position: number) {
+    try {
+      const response = await graphsApi.move(id, { folder_id: folderId, position })
+      const index = graphs.value.findIndex(g => g.id === id)
+      if (index !== -1) {
+        graphs.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to move graph:', error)
+      throw error
+    }
+  }
+
+  // Graph folder operations
+  async function createGraphFolder(name: string, parentId: string | null = null) {
+    try {
+      const response = await graphFoldersApi.create({ name, parent_id: parentId })
+      graphFolders.value.push(response.data)
+      if (parentId) {
+        expandedGraphFolders.value.add(parentId)
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to create graph folder:', error)
+      throw error
+    }
+  }
+
+  async function renameGraphFolder(id: string, name: string) {
+    try {
+      const response = await graphFoldersApi.update(id, { name })
+      const index = graphFolders.value.findIndex(f => f.id === id)
+      if (index !== -1) {
+        graphFolders.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to rename graph folder:', error)
+      throw error
+    }
+  }
+
+  async function deleteGraphFolder(id: string) {
+    try {
+      await graphFoldersApi.delete(id)
+      graphFolders.value = graphFolders.value.filter(f => f.id !== id)
+      // Also remove graphs in this folder (they become orphaned)
+      graphs.value = graphs.value.filter(g => g.folder_id !== id)
+    } catch (error) {
+      logger.error('Failed to delete graph folder:', error)
+      throw error
+    }
+  }
+
+  async function moveGraphFolder(id: string, parentId: string | null, position: number) {
+    try {
+      const response = await graphFoldersApi.move(id, { parent_id: parentId, position })
+      const index = graphFolders.value.findIndex(f => f.id === id)
+      if (index !== -1) {
+        graphFolders.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to move graph folder:', error)
+      throw error
+    }
+  }
+
+  // Toggle importance for graphs/graph folders
+  async function toggleGraphImportance(id: string) {
+    const graph = graphs.value.find(g => g.id === id)
+    if (!graph) return
+    try {
+      const response = await graphsApi.update(id, { is_important: !graph.is_important })
+      const index = graphs.value.findIndex(g => g.id === id)
+      if (index !== -1) {
+        graphs.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to toggle graph importance:', error)
+      throw error
+    }
+  }
+  
+  async function toggleGraphFolderImportance(id: string) {
+    const folder = graphFolders.value.find(f => f.id === id)
+    if (!folder) return
+    try {
+      const response = await graphFoldersApi.update(id, { is_important: !folder.is_important })
+      const index = graphFolders.value.findIndex(f => f.id === id)
+      if (index !== -1) {
+        graphFolders.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to toggle graph folder importance:', error)
+      throw error
+    }
+  }
+  
+  async function toggleGraphUrgent(id: string) {
+    const graph = graphs.value.find(g => g.id === id)
+    if (!graph) return
+    try {
+      const response = await graphsApi.update(id, { is_urgent: !graph.is_urgent })
+      const index = graphs.value.findIndex(g => g.id === id)
+      if (index !== -1) {
+        graphs.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to toggle graph urgent:', error)
+      throw error
+    }
+  }
+  
+  async function toggleGraphFolderUrgent(id: string) {
+    const folder = graphFolders.value.find(f => f.id === id)
+    if (!folder) return
+    try {
+      const response = await graphFoldersApi.update(id, { is_urgent: !folder.is_urgent })
+      const index = graphFolders.value.findIndex(f => f.id === id)
+      if (index !== -1) {
+        graphFolders.value[index] = response.data
+      }
+      return response.data
+    } catch (error) {
+      logger.error('Failed to toggle graph folder urgent:', error)
+      throw error
+    }
+  }
+  
+  // Get graph by id  
+  function getGraphById(id: string): Graph | undefined {
+    return graphs.value.find(g => g.id === id)
+  }
+  
   return {
     // State
     folders,
     notes,
     boards,
     boardFolders,
+    graphs,
+    graphFolders,
     expandedFolders,
     expandedBoardFolders,
+    expandedGraphFolders,
     expandedSections,
     selectedItemId,
     selectedItemType,
@@ -695,19 +1010,23 @@ export const useExplorerStore = defineStore('explorer', () => {
     // Computed
     notesTree,
     boardsList,
+    graphsList,
     favoritesList,
     
     // Actions
     fetchAll,
     fetchNotesTree,
     fetchBoardsTree,
+    fetchGraphsTree,
     toggleFolder,
     toggleBoardFolder,
+    toggleGraphFolder,
     toggleSection,
     selectItem,
     clearSelection,
     getNoteById,
     getBoardById,
+    getGraphById,
     createFolder,
     renameFolder,
     deleteFolder,
@@ -724,14 +1043,26 @@ export const useExplorerStore = defineStore('explorer', () => {
     renameBoardFolder,
     deleteBoardFolder,
     moveBoardFolder,
+    createGraph,
+    updateGraph,
+    deleteGraph,
+    moveGraph,
+    createGraphFolder,
+    renameGraphFolder,
+    deleteGraphFolder,
+    moveGraphFolder,
     toggleFolderImportance,
     toggleNoteImportance,
     toggleBoardImportance,
     toggleBoardFolderImportance,
+    toggleGraphImportance,
+    toggleGraphFolderImportance,
     toggleNoteUrgent,
     toggleFolderUrgent,
     toggleBoardUrgent,
     toggleBoardFolderUrgent,
+    toggleGraphUrgent,
+    toggleGraphFolderUrgent,
     toggleFavoritesFolder
   }
 })
