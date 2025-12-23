@@ -254,13 +254,13 @@ function handleCreateFolder(parentId: string | null) {
   router.push('/notes')
 }
 
-function handleCreateBoard(folderId: string | null) {
+function handleCreateBoard(_folderId: string | null) {
   // Navigate to boards and create board there (or handle here if we want)
   // For now, just navigate
   router.push('/boards')
 }
 
-function handleCreateBoardFolder(parentId: string | null) {
+function handleCreateBoardFolder(_parentId: string | null) {
   // Navigate to boards
   router.push('/boards')
 }
@@ -269,7 +269,7 @@ async function handleCreateGraph(folderId: string | null) {
   const name = prompt('Enter graph name:')
   if (name) {
     try {
-      const res = await explorerStore.createGraph(name, folderId)
+      const res = await explorerStore.createGraph(name, undefined, folderId)
       if (res) {
         await selectGraph(res.id)
       }
@@ -446,11 +446,11 @@ async function handleCreateEdge(sourceId: string, targetId: string) {
   }
 }
 
-function handleNodeSelect(nodeId: string | null) {
+function handleNodeSelect(_nodeId: string | null) {
   // TODO: Show node properties in sidebar
 }
 
-function handleEdgeSelect(edgeId: string | null) {
+function handleEdgeSelect(_edgeId: string | null) {
   // TODO: Show edge properties in sidebar
 }
 

@@ -343,9 +343,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useExplorerStore, type ExplorerItem } from '@/stores/explorer'
-import { useRouter, useRoute } from 'vue-router'
 import ExplorerTreeNode from './ExplorerTreeNode.vue'
 import Icon from './Icon.vue'
 import logger from '@/utils/logger'
@@ -360,8 +359,6 @@ const props = defineProps<{
 const showBoardsHeader = props.showBoardsHeader === undefined ? true : props.showBoardsHeader
 
 const explorerStore = useExplorerStore()
-const router = useRouter()
-const route = useRoute()
 
 // Boards section collapsed state (persist in localStorage so user preference survives reload)
 const BOARDS_SECTION_KEY = 'boardsSectionExpanded'
@@ -596,8 +593,28 @@ function handleDoubleClick(item: ExplorerItem) {
   }
 }
 
-function handleBoardDoubleClick(board: ExplorerItem) {
-  emit('open-board', board.id)
+async function handleToggleImportance(item: ExplorerItem) {
+  try {
+    if (item.type === 'note') {
+      await explorerStore.toggleNoteImportance(item.id)
+    } else if (item.type === 'folder') {
+      await explorerStore.toggleFolderImportance(item.id)
+    }
+  } catch (error) {
+    logger.error('Failed to toggle importance:', error)
+  }
+}
+
+async function handleToggleUrgent(item: ExplorerItem) {
+  try {
+    if (item.type === 'folder') {
+      await explorerStore.toggleFolderUrgent(item.id)
+    } else if (item.type === 'note') {
+      await explorerStore.toggleNoteUrgent(item.id)
+    }
+  } catch (error) {
+    logger.error('Failed to toggle urgent:', error)
+  }
 }
 
 function handleGraphItemSelect(item: ExplorerItem) {
@@ -611,55 +628,58 @@ function handleGraphToggle(item: ExplorerItem) {
   }
 }
 
-function handleGraphDoubleClick(graph: ExplorerItem) {
-  emit('open-graph', graph.id)
-}
-
 function handleGraphItemDoubleClick(item: ExplorerItem) {
   if (item.type === 'graph') {
-    handleGraphDoubleClick(item)
+    emit('open-graph', item.id)
   } else if (item.type === 'graph-folder') {
     explorerStore.toggleGraphFolder(item.id)
   }
 }
 
-async function handleToggleImportance(item: ExplorerItem) {
-  try {
-    if (item.type === 'folder') {
-      await explorerStore.toggleFolderImportance(item.id)
-    } else if (item.type === 'note') {
-      await explorerStore.toggleNoteImportance(item.id)
-    } else if (item.type === 'board') {
-      await explorerStore.toggleBoardImportance(item.id)
-    } else if (item.type === 'board-folder') {
-      await explorerStore.toggleBoardFolderImportance(item.id)
-    } else if (item.type === 'graph') {
-      await explorerStore.toggleGraphImportance(item.id)
-    } else if (item.type === 'graph-folder') {
-      await explorerStore.toggleGraphFolderImportance(item.id)
-    }
-  } catch (error) {
-    logger.error('Failed to toggle importance:', error)
+function handleBoardDoubleClick(board: ExplorerItem) {
+  emit('open-board', board.id)
+}
+
+function handleBoardItemSelect(item: ExplorerItem) {
+  explorerStore.selectItem(item.id, item.type as 'board' | 'board-folder')
+  emit('select', item)
+}
+
+function handleBoardToggle(item: ExplorerItem) {
+  if (item.type === 'board-folder') {
+    explorerStore.toggleBoardFolder(item.id)
   }
 }
 
-async function handleToggleUrgent(item: ExplorerItem) {
+function handleBoardItemDoubleClick(item: ExplorerItem) {
+  if (item.type === 'board') {
+    handleBoardDoubleClick(item)
+  } else if (item.type === 'board-folder') {
+    explorerStore.toggleBoardFolder(item.id)
+  }
+}
+
+async function handleToggleBoardImportance(item: ExplorerItem) {
   try {
-    if (item.type === 'folder') {
-      await explorerStore.toggleFolderUrgent(item.id)
-    } else if (item.type === 'note') {
-      await explorerStore.toggleNoteUrgent(item.id)
-    } else if (item.type === 'board') {
-      await explorerStore.toggleBoardUrgent(item.id)
+    if (item.type === 'board') {
+      await explorerStore.toggleBoardImportance(item.id)
     } else if (item.type === 'board-folder') {
-      await explorerStore.toggleBoardFolderUrgent(item.id)
-    } else if (item.type === 'graph') {
-      await explorerStore.toggleGraphUrgent(item.id)
-    } else if (item.type === 'graph-folder') {
-      await explorerStore.toggleGraphFolderUrgent(item.id)
+      await explorerStore.toggleBoardFolderImportance(item.id)
     }
   } catch (error) {
-    logger.error('Failed to toggle urgent:', error)
+    logger.error('Failed to toggle board importance:', error)
+  }
+}
+
+async function handleToggleBoardUrgent(item: ExplorerItem) {
+  try {
+    if (item.type === 'board-folder') {
+      await explorerStore.toggleBoardFolderUrgent(item.id)
+    } else if (item.type === 'board') {
+      await explorerStore.toggleBoardUrgent(item.id)
+    }
+  } catch (error) {
+    logger.error('Failed to toggle board urgent:', error)
   }
 }
 
@@ -862,7 +882,7 @@ function onGraphsRootDrop(event: DragEvent) {
 }
 
 // Move item function to support drag and drop moving of items (notes, boards, graphs) and folders
-async function handleMoveItem({ itemId, itemType, targetFolderId, insertBeforeId }: { itemId: string, itemType: string, targetFolderId: string | null, insertBeforeId: string | null }) {
+async function handleMoveItem({ itemId, itemType, targetFolderId, insertBeforeId: _insertBeforeId }: { itemId: string, itemType: string, targetFolderId: string | null, insertBeforeId: string | null }) {
   try {
     // Simple move implementation - appending to end (using timestamp as position)
     // Real reordering would require calculating position based on siblings
