@@ -7,6 +7,7 @@ pub mod boards;
 pub mod cards;
 pub mod cors;
 pub mod folders;
+pub mod graphs;
 pub mod labels;
 pub mod lists;
 pub mod notes;

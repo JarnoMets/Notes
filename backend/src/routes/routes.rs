@@ -85,6 +85,30 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/lists/{id}/archive", web::post().to(routes::lists::archive_list))
             .route("/lists/{id}/restore", web::post().to(routes::lists::restore_list))
             .route("/boards/{board_id}/lists/archived", web::get().to(routes::lists::get_archived_lists))
+            // Graphs routes
+            .route("/graphs", web::get().to(routes::graphs::get_graphs))
+            .route("/graphs", web::post().to(routes::graphs::create_graph))
+            .route("/graphs/tree", web::get().to(routes::graphs::get_graphs_tree))
+            .route("/graphs/{id}", web::get().to(routes::graphs::get_graph))
+            .route("/graphs/{id}", web::put().to(routes::graphs::update_graph))
+            .route("/graphs/{id}", web::delete().to(routes::graphs::delete_graph))
+            .route("/graphs/{id}/move", web::post().to(routes::graphs::move_graph))
+            // Graph folders routes
+            .route("/graph-folders", web::get().to(routes::graphs::get_graph_folders))
+            .route("/graph-folders", web::post().to(routes::graphs::create_graph_folder))
+            .route("/graph-folders/{id}", web::put().to(routes::graphs::update_graph_folder))
+            .route("/graph-folders/{id}", web::delete().to(routes::graphs::delete_graph_folder))
+            .route("/graph-folders/{id}/move", web::post().to(routes::graphs::move_graph_folder))
+            // Graph nodes routes
+            .route("/graphs/{graph_id}/nodes", web::get().to(routes::graphs::get_nodes))
+            .route("/graphs/{graph_id}/nodes", web::post().to(routes::graphs::create_node))
+            .route("/graphs/{graph_id}/nodes/{node_id}", web::put().to(routes::graphs::update_node))
+            .route("/graphs/{graph_id}/nodes/{node_id}", web::delete().to(routes::graphs::delete_node))
+            // Graph edges routes
+            .route("/graphs/{graph_id}/edges", web::get().to(routes::graphs::get_edges))
+            .route("/graphs/{graph_id}/edges", web::post().to(routes::graphs::create_edge))
+            .route("/graphs/{graph_id}/edges/{edge_id}", web::put().to(routes::graphs::update_edge))
+            .route("/graphs/{graph_id}/edges/{edge_id}", web::delete().to(routes::graphs::delete_edge))
             // Sync routes for mobile app
             .route("/sync", web::get().to(routes::sync::full_sync))
             .route("/sync/notes/{id}", web::get().to(routes::sync::get_note_full))

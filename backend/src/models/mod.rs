@@ -3,6 +3,7 @@
 pub mod automation;
 pub mod board;
 pub mod card;
+pub mod graph;
 pub mod label;
 pub mod list;
 pub mod note;
@@ -18,6 +19,7 @@ use std::time::{Duration, Instant};
 
 pub use board::BoardsTree;
 pub use note::NotesTree;
+pub use graph::GraphsTree;
 
 // Re-export all model structs for convenience
 pub use user::{User, UserResponse, RegisterRequest, LoginRequest, GoogleAuthRequest, AuthResponse, Claims};
@@ -30,6 +32,7 @@ pub use label::{BoardLabel, CreateLabelRequest, UpdateLabelRequest};
 pub use automation::{AutomationRule, CreateAutomationRequest, UpdateAutomationRequest};
 pub use reminder::{Reminder, CreateReminderRequest, UpdateReminderRequest};
 pub use settings::{IcsCalendar, UserSettings, UpdateSettingsRequest, SettingsResponse};
+pub use graph::{Graph, GraphFolder, GraphNode, GraphEdge, GraphWithData, CreateGraphRequest, UpdateGraphRequest, MoveGraphRequest, CreateGraphFolderRequest, UpdateGraphFolderRequest, MoveGraphFolderRequest, CreateNodeRequest, UpdateNodeRequest, CreateEdgeRequest, UpdateEdgeRequest};
 
 #[derive(Clone)]
 pub struct AppState {
