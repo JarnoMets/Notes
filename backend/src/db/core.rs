@@ -93,6 +93,7 @@ impl Database {
         Self::create_automations_table(pool).await?;
         Self::create_settings_table(pool).await?;
         Self::create_reminders_table(pool).await?;
+        Self::create_graphs_tables(pool).await?;
         Self::create_indexes(pool).await?;
         Ok(())
     }
@@ -480,6 +481,90 @@ impl Database {
         Ok(())
     }
 
+    async fn create_graphs_tables(pool: &PgPool) -> DbResult<()> {
+        // Graph folders table
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_folders (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                parent_id TEXT REFERENCES graph_folders(id) ON DELETE CASCADE,
+                name TEXT NOT NULL,
+                position INTEGER NOT NULL DEFAULT 0,
+                is_important BOOLEAN NOT NULL DEFAULT FALSE,
+                is_urgent BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )",
+        )
+        .execute(pool)
+        .await?;
+
+        // Graphs table
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graphs (
+                id TEXT PRIMARY KEY,
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                folder_id TEXT REFERENCES graph_folders(id) ON DELETE SET NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                position INTEGER NOT NULL DEFAULT 0,
+                is_important BOOLEAN NOT NULL DEFAULT FALSE,
+                is_urgent BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )",
+        )
+        .execute(pool)
+        .await?;
+
+        // Graph nodes table
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_nodes (
+                id TEXT PRIMARY KEY,
+                graph_id TEXT NOT NULL REFERENCES graphs(id) ON DELETE CASCADE,
+                node_type TEXT NOT NULL DEFAULT 'bubble',
+                shape TEXT NOT NULL DEFAULT 'rounded_rect',
+                label TEXT NOT NULL,
+                reference_id TEXT,
+                x DOUBLE PRECISION NOT NULL DEFAULT 0,
+                y DOUBLE PRECISION NOT NULL DEFAULT 0,
+                width DOUBLE PRECISION NOT NULL DEFAULT 120,
+                height DOUBLE PRECISION NOT NULL DEFAULT 60,
+                color TEXT,
+                border_color TEXT,
+                text_color TEXT,
+                font_size INTEGER,
+                metadata TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )",
+        )
+        .execute(pool)
+        .await?;
+
+        // Graph edges table
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS graph_edges (
+                id TEXT PRIMARY KEY,
+                graph_id TEXT NOT NULL REFERENCES graphs(id) ON DELETE CASCADE,
+                source_node_id TEXT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
+                target_node_id TEXT NOT NULL REFERENCES graph_nodes(id) ON DELETE CASCADE,
+                edge_type TEXT NOT NULL DEFAULT 'arrow',
+                style TEXT NOT NULL DEFAULT 'solid',
+                label TEXT,
+                color TEXT,
+                thickness INTEGER,
+                metadata TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )",
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     async fn create_indexes(pool: &PgPool) -> DbResult<()> {
         // Indexes
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
@@ -575,6 +660,39 @@ impl Database {
             .await;
 
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_reminders_note ON reminders(note_id)")
+            .execute(pool)
+            .await;
+
+        // Graph indexes
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graphs_user ON graphs(user_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graphs_folder ON graphs(folder_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_folders_user ON graph_folders(user_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_folders_parent ON graph_folders(parent_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_nodes_graph ON graph_nodes(graph_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_edges_graph ON graph_edges(graph_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_node_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_node_id)")
             .execute(pool)
             .await;
 

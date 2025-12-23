@@ -10,5 +10,6 @@ mod labels;
 mod automations;
 mod settings;
 mod reminders;
+mod graphs;
 
 pub use core::*;
