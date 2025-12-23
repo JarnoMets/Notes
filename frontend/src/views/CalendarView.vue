@@ -10,309 +10,68 @@
       </div>
       
       <div class="sidebar-content" v-if="!sidebarCollapsed">
-        <!-- Mini Calendar Widget -->
-        <div class="mini-calendar-widget">
-          <div class="mini-calendar-header">
-            <button class="mini-nav-btn" @click="miniCalendarPrevMonth">
-              <Icon name="chevron-left" />
-            </button>
-            <span 
-              class="mini-month-title" 
-              @click="toggleMiniCalendarPicker"
-              :class="{ 'picker-open': showMiniCalendarPicker }"
-            >
-              {{ miniCalendarTitle }}
-              <Icon name="chevron-down" class="mini-chevron" />
-            </span>
-            <button class="mini-nav-btn" @click="miniCalendarNextMonth">
-              <Icon name="chevron-right" />
-            </button>
-          </div>
-          
-          <!-- Year/Month Picker Dropdown -->
-          <div v-if="showMiniCalendarPicker" class="mini-calendar-picker">
-            <div class="picker-year-row">
-              <button class="picker-nav-btn" @click="pickerYear--">
-                <Icon name="chevron-left" />
-              </button>
-              <span class="picker-year">{{ pickerYear }}</span>
-              <button class="picker-nav-btn" @click="pickerYear++">
-                <Icon name="chevron-right" />
-              </button>
-            </div>
-            <div class="picker-months-grid">
-              <button 
-                v-for="(month, index) in monthNames" 
-                :key="index"
-                class="picker-month"
-                :class="{ 
-                  'current': isCurrentMonth(index),
-                  'selected': isSelectedMonth(index)
-                }"
-                @click="selectMonth(index)"
-              >
-                {{ month.slice(0, 3) }}
-              </button>
-            </div>
-          </div>
-          
-          <div v-if="!showMiniCalendarPicker" class="mini-calendar-grid">
-            <div class="mini-day-header" v-for="day in miniDayNames" :key="day">{{ day }}</div>
-            <div 
-              v-for="day in miniCalendarDays" 
-              :key="day.date"
-              class="mini-day"
-              :class="{ 
-                'other-month': day.isOtherMonth, 
-                'today': day.isToday,
-                'selected': day.isSelected
-              }"
-              @click="selectMiniCalendarDay(day)"
-            >
-              {{ day.dayNumber }}
-            </div>
-          </div>
-        </div>
-
-        <!-- Board Filters -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h3>Boards</h3>
-            <button class="expand-toggle" @click="toggleBoardsList" :aria-expanded="showBoardsList" :title="showBoardsList ? 'Hide boards' : 'Show boards'">
-              <Icon :name="showBoardsList ? 'chevron-down' : 'chevron-right'" />
-            </button>
-          </div>
-          <div class="filter-list" v-if="showBoardsList">
-            <div v-for="board in boards" :key="board.id" class="board-filter">
-              <div class="board-header">
-                <label class="filter-item">
-                  <input
-                    type="checkbox"
-                    :checked="selectedBoardIds.includes(board.id)"
-                    @change="toggleBoard(board.id)"
-                  />
-                  <span class="filter-name">{{ board.name }}</span>
-                </label>
-              </div>
-              <!-- lists removed from calendar sidebar for simplicity -->
-            </div>
-          </div>
-        </div>
-
-        <!-- ICS Calendars -->
-        <div class="filter-section">
-          <div class="section-header">
-            <h3>External Calendars</h3>
-            <button class="add-btn" @click="showAddCalendarModal = true" title="Add calendar">
-              <Icon name="plus" />
-            </button>
-          </div>
-          <div class="filter-list">
-            <div v-for="cal in icsCalendars" :key="cal.id" class="filter-item ics-item">
-              <label>
-                <input
-                  type="checkbox"
-                  :checked="cal.enabled"
-                  @change="toggleIcsCalendar(cal.id)"
-                />
-                <span class="color-dot" :style="{ backgroundColor: cal.color }"></span>
-                <span class="filter-name">{{ cal.name }}</span>
-              </label>
-              <div class="ics-actions">
-                <button class="icon-btn" @click="refreshCalendar(cal.id)" title="Refresh">
-                  <Icon name="refresh" />
-                </button>
-                <button class="icon-btn" @click="editCalendar(cal)" title="Edit">
-                  <Icon name="edit" />
-                </button>
-                <button class="icon-btn danger" @click="deleteCalendar(cal.id)" title="Delete">
-                  <Icon name="trash" />
-                </button>
-              </div>
-            </div>
-            <p v-if="icsCalendars.length === 0" class="empty-text">No external calendars</p>
-          </div>
-        </div>
-
-        <!-- Quick Filters -->
-        <div class="filter-section">
-          <h3>Quick Filters</h3>
-          <div class="quick-filters">
-            <button 
-              :class="{ active: showOverdue }" 
-              @click="showOverdue = !showOverdue"
-            >
-              Overdue
-            </button>
-            <button 
-              :class="{ active: showToday }" 
-              @click="showToday = !showToday"
-            >
-              Today
-            </button>
-            <button 
-              :class="{ active: showUpcoming }" 
-              @click="showUpcoming = !showUpcoming"
-            >
-              Upcoming
-            </button>
-          </div>
-          <button v-if="hasActiveFilters" class="clear-filters" @click="clearFilters">
-            Clear filters
-          </button>
-        </div>
+        <CalendarSidebarFilters
+          :boards="boards"
+          :selectedBoardIds="selectedBoardIds"
+          :showBoardsList="showBoardsList"
+          :icsCalendars="icsCalendars"
+          :showOverdue="showOverdue"
+          :showDone="showDone"
+          :showUpcoming="showUpcoming"
+          :hasActiveFilters="hasActiveFilters"
+          :selectedDate="selectedDate"
+          :weekStartsOnMonday="weekStartsOnMonday"
+          @toggle-boards-list="toggleBoardsList"
+          @toggle-board="toggleBoard"
+          @open-add-calendar="showAddCalendarModal = true"
+          @toggle-ics="toggleIcsCalendar"
+          @refresh-ics="refreshCalendar"
+          @edit-ics="editCalendar"
+          @delete-ics="deleteCalendar"
+          @select-date="selectDate"
+          @toggle-filter="(filter) => {
+            if (filter === 'overdue') showOverdue = !showOverdue
+            if (filter === 'done') showDone = !showDone
+            if (filter === 'upcoming') showUpcoming = !showUpcoming
+          }"
+          @clear-filters="clearFilters"
+        />
       </div>
     </aside>
 
     <!-- Main Calendar -->
     <main class="calendar-main">
-      <div class="calendar-header">
-        <div class="header-left">
-          <button class="nav-btn" @click="previousPeriod">
-            <Icon name="chevron-left" />
-          </button>
-          <button class="nav-btn" @click="nextPeriod">
-            <Icon name="chevron-right" />
-          </button>
-          <button class="today-btn" @click="goToToday">Today</button>
-          <h1 class="period-title">{{ periodTitle }}</h1>
-        </div>
-        <div class="header-right">
-          <div class="view-toggle">
-            <button :class="{ active: viewMode === 'day' }" @click="viewMode = 'day'">Day</button>
-            <button :class="{ active: viewMode === 'workweek' }" @click="viewMode = 'workweek'">Work Week</button>
-            <button :class="{ active: viewMode === 'week' }" @click="viewMode = 'week'">Week</button>
-            <button :class="{ active: viewMode === 'month' }" @click="viewMode = 'month'">Month</button>
-          </div>
-        </div>
-      </div>
+      <CalendarHeader
+        :viewMode="viewMode"
+        :periodTitle="periodTitle"
+        @previous="previousPeriod"
+        @next="nextPeriod"
+        @goToToday="goToToday"
+        @update:viewMode="viewMode = $event"
+      />
 
       <!-- Month View -->
-      <div v-if="viewMode === 'month'" class="calendar-grid month">
-        <!-- Day headers -->
-        <div class="day-headers">
-          <div v-for="day in orderedDayNames" :key="day" class="day-header">{{ day }}</div>
-        </div>
+      <MonthGrid
+        v-if="viewMode === 'month'"
+        :calendarDays="calendarDays"
+        :orderedDayNames="orderedDayNames"
+        :selectedDate="selectedDate"
+        @select-date="selectDate"
+        @open-context="openContextMenu"
+        @item-click="onItemClick"
+        @show-day-modal="showDayModal"
+      />
 
-        <!-- Calendar cells -->
-        <div class="calendar-cells">
-          <div
-            v-for="day in calendarDays"
-            :key="day.date"
-            class="calendar-cell"
-            :class="{
-              'other-month': day.isOtherMonth,
-              'today': day.isToday,
-              'selected': isSelectedDate(day.date),
-              'has-items': day.items.length > 0
-            }"
-            @click="selectDate(day.date)"
-            @contextmenu.prevent="openContextMenu($event, day)"
-          >
-            <div class="cell-header">
-              <span class="day-number">{{ day.dayNumber }}</span>
-            </div>
-            <div class="cell-items">
-              <div
-                v-for="item in day.items.slice(0, 3)"
-                :key="item.id"
-                class="calendar-item"
-                :class="[item.type, { overdue: item.isOverdue }]"
-                :style="item.type === 'ics' ? { borderLeftColor: item.color } : {}"
-                @click="onItemClick(item)"
-              >
-                <span class="item-time" v-if="item.time">{{ item.time }}</span>
-                <span class="item-title">{{ item.title }}</span>
-              </div>
-              <div v-if="day.items.length > 3" class="more-items" @click="showDayModal(day)">
-                +{{ day.items.length - 3 }} more
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Week/Day/Workweek View with Hours -->
-      <div v-else class="calendar-grid week-style" :class="viewMode">
-        <div class="week-view-container">
-          <!-- Time column + Day headers -->
-          <div class="week-header" :class="viewMode">
-            <div class="time-gutter-header"></div>
-            <div 
-              v-for="day in calendarDays" 
-              :key="day.date" 
-              class="week-day-header"
-              :class="{ 'today': day.isToday, 'selected': isSelectedDate(day.date) }"
-              @click="selectDate(day.date)"
-              @contextmenu.prevent="openContextMenu($event, day)"
-            >
-              <span class="day-name">{{ getDayName(day.date) }}</span>
-              <span class="day-number" :class="{ 'today-number': day.isToday, 'selected-number': isSelectedDate(day.date) && !day.isToday }">{{ day.dayNumber }}</span>
-            </div>
-          </div>
-
-          <!-- All-day events row -->
-          <div class="all-day-row" :class="viewMode">
-            <div class="time-gutter all-day-label">All Day</div>
-            <div 
-              v-for="day in calendarDays" 
-              :key="day.date + '-allday'" 
-              class="all-day-cell"
-              :class="{ 'today': day.isToday, 'selected': isSelectedDate(day.date) }"
-              @contextmenu.prevent="openContextMenu($event, day)"
-            >
-              <div
-                v-for="item in getAllDayItems(day)"
-                :key="item.id"
-                class="all-day-item"
-                :class="[item.type, { overdue: item.isOverdue }]"
-                :style="item.type === 'ics' ? { borderLeftColor: item.color, backgroundColor: item.color + '20' } : {}"
-                @click="onItemClick(item)"
-              >
-                {{ item.title }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Scrollable time grid -->
-          <div class="week-body" ref="weekBodyRef">
-            <div class="time-grid" :class="viewMode">
-              <!-- Time column -->
-              <div class="time-gutter">
-                <div v-for="hour in displayHours" :key="hour" class="time-slot-label">
-                  {{ formatHour(hour) }}
-                </div>
-              </div>
-
-              <!-- Day columns -->
-              <div 
-                v-for="day in calendarDays" 
-                :key="day.date + '-col'" 
-                class="day-column"
-                :class="{ 'today': day.isToday, 'selected': isSelectedDate(day.date) }"
-                @contextmenu.prevent="openContextMenu($event, day)"
-              >
-                <!-- Hour grid lines -->
-                <div v-for="hour in displayHours" :key="hour" class="hour-slot"></div>
-
-                <!-- Time-based events -->
-                <div
-                  v-for="item in getTimedItems(day)"
-                  :key="item.id"
-                  class="week-event"
-                  :class="[item.type, { overdue: item.isOverdue }]"
-                  :style="getEventStyle(item)"
-                  @click="onItemClick(item)"
-                >
-                  <span class="event-time">{{ item.time }}</span>
-                  <span class="event-title">{{ item.title }}</span>
-                  <span v-if="item.duration" class="event-duration">{{ item.duration }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <WeekView
+        v-else
+        :viewMode="viewMode"
+        :calendarDays="calendarDays"
+        :displayHours="displayHours"
+        :selectedDate="selectedDate"
+        @select-date="selectDate"
+        @open-context="openContextMenu"
+        @item-click="onItemClick"
+      />
     </main>
 
     <!-- Add/Edit Calendar Modal -->
@@ -362,7 +121,7 @@
             v-for="item in selectedDay.items"
             :key="item.id"
             class="day-item"
-            :class="[item.type, { overdue: item.isOverdue }]"
+            :class="[item.type, { overdue: item.isOverdue, done: item.type === 'card' && item.card && item.card.status === 'done' }]"
             :style="item.type === 'ics' ? { borderLeftColor: item.color } : {}"
             @click="onItemClick(item)"
           >
@@ -493,7 +252,7 @@
               <note-tree-view
                 :folders="explorerStore.folders"
                 :notes="explorerStore.notes"
-                @select-note="(note) => { selectNoteFromTree(note); showAddNoteDialog = false; }"
+                @select-note="(note: any) => { selectNoteFromTree(note); showAddNoteDialog = false; }"
               />
             </div>
           </div>
@@ -519,14 +278,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import Icon from '@/components/Icon.vue'
-import NoteTreeView from '@/components/NoteTreeView.vue'
+import Icon from '@/components/common/ui/Icon.vue'
+import CalendarSidebarFilters from '@/components/calendar/CalendarSidebarFilters.vue'
+import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
+import MonthGrid from '@/components/calendar/MonthGrid.vue'
+import NoteTreeView from '@/components/common/ui/NoteTreeView.vue'
+import WeekView from '@/components/calendar/WeekView.vue'
 import { boardsApi, listsApi, cardsApi, notesApi, remindersApi } from '@/api'
 import { useSettingsStore } from '@/stores/settings'
 import { useExplorerStore } from '@/stores/explorer'
 import { useNotesStore } from '@/stores/notes'
+import logger from '@/utils/logger'
+import {
+  dateToString,
+  stringToDate,
+  getWeekStart,
+  formatTime,
+  calculateDuration
+} from '@/utils/calendar'
 import type { Board, List } from '@/types/board'
 import type { Card } from '@/types/card'
 import type { IcsCalendar } from '@/stores/settings'
@@ -571,19 +342,7 @@ function toggleBoardsList() {
 loadShowBoardsList()
 const viewMode = ref<'month' | 'week' | 'workweek' | 'day'>('month')
 
-// Helper function to convert date to YYYY-MM-DD format in local time
-function dateToString(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-// Helper function to parse YYYY-MM-DD string to Date in local time
-function stringToDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number)
-  return new Date(year, month - 1, day)
-}
+// Date helpers moved to src/utils/calendar.ts
 
 // Create today's date at midnight local time to avoid timezone offset issues
 const today = new Date()
@@ -593,14 +352,51 @@ const todayStr = dateToString(today)
 const currentDate = ref<Date>(new Date(today))
 const selectedDate = ref<string>(todayStr)
 const showOverdue = ref(false)
-const showToday = ref(false)
+const showDone = ref(false)
 const showUpcoming = ref(false)
 
-// Mini calendar state
-const miniCalendarDate = ref(new Date(today))
-const showMiniCalendarPicker = ref(false)
-const pickerYear = ref(new Date().getFullYear())
-const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+// Persistence
+const CALENDAR_VIEW_KEY = 'viewState.calendar'
+
+function loadCalendarViewState() {
+  try {
+    const raw = localStorage.getItem(CALENDAR_VIEW_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data.viewMode) viewMode.value = data.viewMode
+    if (data.currentDate) currentDate.value = new Date(data.currentDate)
+    if (data.selectedDate) selectedDate.value = data.selectedDate
+    if (typeof data.showOverdue === 'boolean') showOverdue.value = data.showOverdue
+    if (typeof data.showDone === 'boolean') showDone.value = data.showDone
+    if (typeof data.showUpcoming === 'boolean') showUpcoming.value = data.showUpcoming
+    if (typeof data.sidebarCollapsed === 'boolean') sidebarCollapsed.value = data.sidebarCollapsed
+    if (typeof data.showBoardsList === 'boolean') showBoardsList.value = data.showBoardsList
+    if (Array.isArray(data.selectedBoardIds)) selectedBoardIds.value = data.selectedBoardIds
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveCalendarViewState() {
+  try {
+    const data = {
+      viewMode: viewMode.value,
+      currentDate: currentDate.value ? currentDate.value.toISOString() : null,
+      selectedDate: selectedDate.value,
+      showOverdue: showOverdue.value,
+      showDone: showDone.value,
+      showUpcoming: showUpcoming.value,
+      sidebarCollapsed: sidebarCollapsed.value,
+      showBoardsList: showBoardsList.value,
+      selectedBoardIds: selectedBoardIds.value
+    }
+    localStorage.setItem(CALENDAR_VIEW_KEY, JSON.stringify(data))
+  } catch (e) {
+    // ignore
+  }
+}
+
+// (mini calendar removed from this view; a compact calendar lives in the sidebar component)
 
 // Modal state
 const showAddCalendarModal = ref(false)
@@ -648,16 +444,14 @@ const calendarColors = [
   '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#64748b'
 ]
 
-// Hours for week view - show all 24 hours but scroll to 7 AM by default
-const defaultScrollHour = 7
+// Hours for week view - show all 24 hours
 
 // Display all 24 hours (0-23)
 const displayHours = computed(() => {
   return Array.from({ length: 24 }, (_, i) => i)
 })
 
-// Ref for the week body to allow scrolling
-const weekBodyRef = ref<HTMLElement | null>(null)
+// weekBodyRef removed; week scrolling handled inside WeekView component
 
 // Types
 interface CalendarItem {
@@ -695,65 +489,7 @@ const weekStartsOnMonday = computed(() => settingsStore.weekStartsOnMonday)
 
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-// Mini calendar computed
-const miniDayNames = computed(() => {
-  if (weekStartsOnMonday.value) {
-    return ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-  }
-  return ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-})
-
-const miniCalendarTitle = computed(() => {
-  return miniCalendarDate.value.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-})
-
-interface MiniCalendarDay {
-  date: string
-  dayNumber: number
-  isOtherMonth: boolean
-  isToday: boolean
-  isSelected: boolean
-}
-
-const miniCalendarDays = computed((): MiniCalendarDay[] => {
-  const days: MiniCalendarDay[] = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const todayStr = dateToString(today)
-  
-  const year = miniCalendarDate.value.getFullYear()
-  const month = miniCalendarDate.value.getMonth()
-  
-  let startDate = new Date(year, month, 1)
-  const firstDayOffset = weekStartsOnMonday.value 
-    ? (startDate.getDay() + 6) % 7 
-    : startDate.getDay()
-  startDate.setDate(startDate.getDate() - firstDayOffset)
-  
-  let endDate = new Date(year, month + 1, 0)
-  const lastDayOffset = weekStartsOnMonday.value
-    ? (6 - (endDate.getDay() + 6) % 7)
-    : (6 - endDate.getDay())
-  endDate.setDate(endDate.getDate() + lastDayOffset)
-  
-  const current = new Date(startDate)
-  const selectedDateStr = dateToString(currentDate.value)
-  
-  while (current <= endDate) {
-    const dateStr = dateToString(current)
-    days.push({
-      date: dateStr,
-      dayNumber: current.getDate(),
-      isOtherMonth: current.getMonth() !== month,
-      isToday: dateStr === todayStr,
-      isSelected: dateStr === selectedDateStr
-    })
-    current.setDate(current.getDate() + 1)
-  }
-  
-  return days
-})
-
+// (mini calendar day names moved into sidebar component)
 // Ordered day names based on week start setting
 const orderedDayNames = computed(() => {
   if (weekStartsOnMonday.value) {
@@ -793,7 +529,7 @@ const periodTitle = computed(() => {
 })
 
 const hasActiveFilters = computed(() => {
-  return showOverdue.value || showToday.value || showUpcoming.value || selectedBoardIds.value.length < boards.value.length
+  return showOverdue.value || showDone.value || showUpcoming.value || selectedBoardIds.value.length < boards.value.length
 })
 
 // Get all calendar items (cards + ICS events)
@@ -816,7 +552,8 @@ const allCalendarItems = computed((): CalendarItem[] => {
       title: card.title,
       date: dueDate,
       type: 'card',
-      isOverdue: dueDate < today && !card.archived,
+      // Treat cards marked as done as not overdue so they don't render with the red overdue style
+      isOverdue: dueDate < today && !card.archived && card.status !== 'done',
       isAllDay: true,
       boardName: card.boardName,
       card
@@ -930,10 +667,11 @@ const calendarDays = computed((): CalendarDay[] => {
 
     // Apply quick filters
     let filteredItems = dayItems
-    if (showOverdue.value || showToday.value || showUpcoming.value) {
+    if (showOverdue.value || showDone.value || showUpcoming.value) {
       filteredItems = dayItems.filter(item => {
         if (showOverdue.value && item.isOverdue) return true
-        if (showToday.value && isToday) return true
+        // When 'Done' filter is active, include cards with status 'done'
+        if (showDone.value && item.type === 'card' && item.card && item.card.status === 'done') return true
         if (showUpcoming.value && item.date > today) return true
         return false
       })
@@ -957,134 +695,20 @@ const calendarDays = computed((): CalendarDay[] => {
 
 // Per-board expand helpers removed — calendar displays only board checkboxes
 
-// Methods
-function getWeekStart(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  const dayOfWeek = d.getDay()
-  const offset = weekStartsOnMonday.value 
-    ? (dayOfWeek + 6) % 7 
-    : dayOfWeek
-  d.setDate(d.getDate() - offset)
-  return d
-}
-
-function getDayName(dateStr: string): string {
-  const date = new Date(dateStr)
-  return dayNames[date.getDay()]
-}
-
-function formatHour(hour: number): string {
-  if (hour === 0) return '12 AM'
-  if (hour === 12) return '12 PM'
-  if (hour < 12) return `${hour} AM`
-  return `${hour - 12} PM`
-}
+// Methods (week start logic moved to utils/calendar.ts)
 
 // Mini calendar methods
-function miniCalendarPrevMonth() {
-  const d = new Date(miniCalendarDate.value)
-  d.setMonth(d.getMonth() - 1)
-  miniCalendarDate.value = d
-}
-
-function miniCalendarNextMonth() {
-  const d = new Date(miniCalendarDate.value)
-  d.setMonth(d.getMonth() + 1)
-  miniCalendarDate.value = d
-}
-
-function selectMiniCalendarDay(day: MiniCalendarDay) {
-  const newDate = stringToDate(day.date)
-  selectedDate.value = day.date
-  currentDate.value = newDate
-  miniCalendarDate.value = new Date(newDate.getFullYear(), newDate.getMonth(), 1)
-}
-
-// Mini calendar picker methods
-function toggleMiniCalendarPicker() {
-  showMiniCalendarPicker.value = !showMiniCalendarPicker.value
-  if (showMiniCalendarPicker.value) {
-    pickerYear.value = miniCalendarDate.value.getFullYear()
-  }
-}
-
-function isCurrentMonth(monthIndex: number): boolean {
-  const today = new Date()
-  return today.getFullYear() === pickerYear.value && today.getMonth() === monthIndex
-}
-
-function isSelectedMonth(monthIndex: number): boolean {
-  return miniCalendarDate.value.getFullYear() === pickerYear.value && 
-         miniCalendarDate.value.getMonth() === monthIndex
-}
-
-function selectMonth(monthIndex: number) {
-  miniCalendarDate.value = new Date(pickerYear.value, monthIndex, 1)
-  currentDate.value = new Date(pickerYear.value, monthIndex, 1)
-  showMiniCalendarPicker.value = false
-}
+// Mini calendar helpers removed — sidebar component handles its own picker and state
 
 // Date selection methods
-function isSelectedDate(dateStr: string): boolean {
-  return selectedDate.value === dateStr
-}
 
 function selectDate(dateStr: string) {
   selectedDate.value = dateStr
   const newDate = stringToDate(dateStr)
   currentDate.value = newDate
-  miniCalendarDate.value = new Date(newDate.getFullYear(), newDate.getMonth(), 1)
 }
 
-function calculateDuration(start: Date, end: Date, isAllDay: boolean): string {
-  if (isAllDay) return ''
-  const diffMs = end.getTime() - start.getTime()
-  const diffMins = Math.round(diffMs / 60000)
-  if (diffMins < 60) return `${diffMins}m`
-  const hours = Math.floor(diffMins / 60)
-  const mins = diffMins % 60
-  if (mins === 0) return `${hours}h`
-  return `${hours}h ${mins}m`
-}
-
-function getAllDayItems(day: CalendarDay): CalendarItem[] {
-  return day.items.filter(item => item.isAllDay)
-}
-
-function getTimedItems(day: CalendarDay): CalendarItem[] {
-  return day.items.filter(item => !item.isAllDay && item.time)
-}
-
-function getEventStyle(item: CalendarItem): Record<string, string> {
-  if (!item.time) return {}
-  
-  const startHour = item.date.getHours()
-  const startMinutes = item.date.getMinutes()
-  
-  // Calculate position - now showing all 24 hours starting from 0
-  const top = (startHour * 60 + startMinutes) // pixels from top
-  
-  let height = 60 // Default 1 hour
-  if (item.endDate) {
-    const diffMs = item.endDate.getTime() - item.date.getTime()
-    const diffMins = Math.round(diffMs / 60000)
-    height = Math.max(20, diffMins) // Minimum 20px
-  }
-  
-  const bgColor = item.type === 'ics' ? item.color : 'var(--accent)'
-  
-  return {
-    top: `${top}px`,
-    height: `${height}px`,
-    backgroundColor: item.type === 'ics' ? `${item.color}30` : 'rgba(var(--accent-rgb, 59, 130, 246), 0.2)',
-    borderLeftColor: bgColor || 'var(--accent)'
-  }
-}
-
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-}
+// Duration and time formatting moved to utils/calendar.ts
 
 function formatDayModalTitle(dateStr: string): string {
   const date = new Date(dateStr)
@@ -1127,7 +751,6 @@ function nextPeriod() {
 function goToToday() {
   const today = new Date()
   currentDate.value = today
-  miniCalendarDate.value = today
   selectedDate.value = today.toISOString().split('T')[0]
 }
 
@@ -1146,7 +769,7 @@ function toggleIcsCalendar(calendarId: string) {
 
 function clearFilters() {
   showOverdue.value = false
-  showToday.value = false
+  showDone.value = false
   showUpcoming.value = false
   selectedBoardIds.value = boards.value.map(b => b.id)
 }
@@ -1258,7 +881,7 @@ async function selectNoteFromTree(note: any) {
         remind_before: '0'
       })
     } catch (error) {
-      console.error('Failed to save note link to calendar:', error)
+      logger.error('Failed to save note link to calendar:', error)
       // Remove from local array if save fails
       const index = noteReminders.value.indexOf(reminder)
       if (index > -1) {
@@ -1293,7 +916,7 @@ async function saveReminder() {
     // Refresh reminders list
     await fetchReminders()
   } catch (error) {
-    console.error('Failed to save reminder:', error)
+    logger.error('Failed to save reminder:', error)
     alert('Failed to save reminder')
   }
 }
@@ -1318,7 +941,7 @@ async function saveNote() {
     
     showAddNoteDialog.value = false
   } catch (error) {
-    console.error('Failed to save note:', error)
+    logger.error('Failed to save note:', error)
     alert('Failed to create note')
   }
 }
@@ -1357,7 +980,7 @@ async function saveCalendar() {
     }
     closeCalendarModal()
   } catch (err) {
-    console.error('Failed to save calendar:', err)
+    logger.error('Failed to save calendar:', err)
     alert('Failed to save calendar. Please check the URL and try again.')
   } finally {
     calendarFormLoading.value = false
@@ -1370,7 +993,7 @@ async function refreshCalendar(calendarId: string) {
     try {
       await settingsStore.fetchIcsCalendar(calendar)
     } catch (err) {
-      console.error('Failed to refresh calendar:', err)
+      logger.error('Failed to refresh calendar:', err)
     }
   }
 }
@@ -1397,17 +1020,23 @@ async function fetchReminders() {
         date: r.date
       }))
   } catch (err) {
-    console.error('Failed to load reminders:', err)
+    logger.error('Failed to load reminders:', err)
   }
 }
 
 // Lifecycle
 onMounted(async () => {
   try {
+    // Restore UI state saved from previous visit
+    loadCalendarViewState()
+
     // Fetch boards
     const boardsRes = await boardsApi.getAll()
     boards.value = boardsRes.data
-    selectedBoardIds.value = boards.value.map(b => b.id)
+    // If no selection was restored, default to all boards
+    if (!selectedBoardIds.value || selectedBoardIds.value.length === 0) {
+      selectedBoardIds.value = boards.value.map(b => b.id)
+    }
 
     // Fetch cards for all boards through lists (parallelized)
     try {
@@ -1419,8 +1048,8 @@ onMounted(async () => {
             // store lists
             boardLists.value[board.id] = listsRes.data as List[]
             return { board, lists: listsRes.data as List[] }
-          } catch (err) {
-            console.error(`Failed to load lists for board ${board.id}:`, err)
+            } catch (err) {
+            logger.error(`Failed to load lists for board ${board.id}:`, err)
             boardLists.value[board.id] = []
             return { board, lists: [] as List[] }
           }
@@ -1434,7 +1063,7 @@ onMounted(async () => {
           const p = cardsApi.getAll(list.id)
             .then(res => (res.data as Card[]).map(card => ({ ...card, boardId: bwl.board.id, boardName: bwl.board.name })))
             .catch(err => {
-              console.error(`Failed to load cards for list ${list.id}:`, err)
+              logger.error(`Failed to load cards for list ${list.id}:`, err)
               return [] as CardWithBoard[]
             })
           cardFetchPromises.push(p)
@@ -1444,7 +1073,7 @@ onMounted(async () => {
       const cardsArrays = await Promise.all(cardFetchPromises)
       cards.value = cardsArrays.flat()
     } catch (err) {
-      console.error('Failed to load cards for calendar:', err)
+      logger.error('Failed to load cards for calendar:', err)
       cards.value = []
     }
 
@@ -1459,42 +1088,32 @@ onMounted(async () => {
     // Fetch reminders from backend
     await fetchReminders()
     
-    // Scroll to 7 AM in week views after DOM is ready
-    nextTick(() => {
-      scrollToDefaultHour()
-    })
+    // WeekView handles its own scroll position; no action needed here
     
     // Add click listener to close context menu
     document.addEventListener('click', closeContextMenu)
   } catch (err) {
-    console.error('Failed to load calendar data:', err)
+    logger.error('Failed to load calendar data:', err)
   }
 })
 
-// Scroll to default hour (7 AM) in week views
-function scrollToDefaultHour() {
-  if (viewMode.value !== 'month' && weekBodyRef.value) {
-    // Each hour slot is 60px tall, scroll to 7 AM
-    const scrollTop = defaultScrollHour * 60
-    weekBodyRef.value.scrollTop = scrollTop
-  }
-}
+onUnmounted(() => {
+  // Persist calendar UI state
+  saveCalendarViewState()
+  document.removeEventListener('click', closeContextMenu)
+})
+
+// scrollToDefaultHour removed; WeekView handles scrolling internally
 
 // Watch for view mode changes
 watch(viewMode, () => {
   // Reset to today when switching views
   currentDate.value = new Date()
-  
-  // Scroll to 7 AM in week views after DOM updates
-  if (viewMode.value !== 'month') {
-    nextTick(() => {
-      scrollToDefaultHour()
-    })
-  }
 })
+
 </script>
 
-<style scoped>
+<style>
 .calendar-view {
   display: flex;
   flex: 1;
@@ -2037,7 +1656,10 @@ watch(viewMode, () => {
 }
 
 .calendar-grid.month {
-  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* allow calendar to flex to fill available space */
 }
 
 .calendar-grid.week-style {
@@ -2066,9 +1688,12 @@ watch(viewMode, () => {
   flex: 1;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  /* Distribute available vertical space evenly across 6 rows */
   grid-template-rows: repeat(6, 1fr);
+  grid-auto-rows: 1fr;
   overflow: hidden;
-  min-height: 0;
+  min-height: 0; /* allow flex parent to control height */
+  height: 100%;
 }
 
 .calendar-cell {
@@ -2186,6 +1811,13 @@ watch(viewMode, () => {
   background: rgba(239, 68, 68, 0.15);
   border-left-color: #ef4444;
   color: #dc2626;
+}
+
+/* Done card styling: green/tone using --success token */
+.calendar-item.card.done {
+  background: color-mix(in srgb, var(--success) 15%, var(--bg-tertiary));
+  border-left-color: var(--success);
+  color: var(--text-primary);
 }
 
 .calendar-item.ics {
@@ -2396,6 +2028,11 @@ watch(viewMode, () => {
   border-left-color: var(--accent);
 }
 
+.all-day-item.card.done {
+  background: color-mix(in srgb, var(--success) 15%, var(--bg-tertiary));
+  border-left-color: var(--success);
+}
+
 /* Week body - scrollable time grid */
 .week-body {
   flex: 1;
@@ -2512,6 +2149,11 @@ watch(viewMode, () => {
 .week-event.card.overdue {
   background: rgba(239, 68, 68, 0.2);
   border-left-color: #ef4444;
+}
+
+.week-event.card.done {
+  background: color-mix(in srgb, var(--success) 20%, var(--bg-tertiary));
+  border-left-color: var(--success);
 }
 
 /* Modals */
@@ -2696,6 +2338,11 @@ watch(viewMode, () => {
 .day-item.card.overdue {
   background: rgba(239, 68, 68, 0.15);
   border-left-color: #ef4444;
+}
+
+.day-item.card.done {
+  background: color-mix(in srgb, var(--success) 15%, var(--bg-tertiary));
+  border-left-color: var(--success);
 }
 
 .day-item.ics {

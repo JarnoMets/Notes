@@ -169,17 +169,10 @@
                 @click="openCardModal(card)"
                 @contextmenu.prevent="openCardContextMenu($event, card, listWithCards.list.id)"
               >
-                <!-- Done marker (non-editable) -->
-                <span v-if="card.status === 'done'" class="card-done-mark">Done</span>
+                <!-- Done marker (top-right badge) -->
+                <span v-if="card.status === 'done'" class="card-done-badge">Done</span>
 
-                <!-- Card Edit Button -->
-                <button 
-                  class="card-edit-btn" 
-                  @click.stop="openCardModal(card)" 
-                  title="Edit card"
-                >
-                  <Icon name="edit" :size="12" />
-                </button>
+                <!-- Clicking the card opens the edit modal; edit button removed -->
                 
                 <!-- Note link indicator -->
                 <div v-if="hasNoteLinks(card.description)" class="card-links">
@@ -385,103 +378,17 @@
       </div>
     </div>
 
-    <!-- Edit Card Modal -->
-    <div v-if="showEditCardModal && editingCard" class="modal-overlay" @click.self="closeEditCardModal">
-      <div class="modal modal-large">
-        <div class="modal-header">
-          <h3>Edit Card</h3>
-          <button class="modal-close" @click="closeEditCardModal">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <form @submit.prevent="updateCard">
-          <div class="form-group">
-            <label for="editCardTitle">Title</label>
-            <input 
-              id="editCardTitle" 
-              v-model="editingCard.title" 
-              type="text" 
-              required 
-            />
-          </div>
-          <div class="form-group">
-            <label for="editCardDescription">Description</label>
-            <textarea 
-              id="editCardDescription" 
-              v-model="editingCard.description" 
-              rows="6" 
-              placeholder="Add a more detailed description..."
-            ></textarea>
-          </div>
-          <div class="form-group">
-            <label for="editCardDueDate">Due Date</label>
-            <input 
-              id="editCardDueDate" 
-              v-model="editingCard.due_date" 
-              type="datetime-local" 
-              @focus="onEditDueDateFocus"
-              @change="onEditDueDateChange"
-            />
-          </div>
-          <div class="form-group">
-            <label>Labels</label>
-            <div class="label-selector">
-              <button 
-                v-for="label in currentBoard?.labels" 
-                :key="label.id"
-                type="button"
-                class="label-option"
-                :class="{ selected: editingCard.labels.includes(label.id) }"
-                :style="{ backgroundColor: editingCard.labels.includes(label.id) ? label.color : 'transparent', borderColor: label.color }"
-                @click="toggleCardLabel(label.id)"
-              >
-                {{ label.name }}
-              </button>
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Status</label>
-            <div>
-              <label class="checkbox-inline">
-                <input type="checkbox" v-model="editingCard.status" true-value="done" false-value="open" />
-                Done
-              </label>
-            </div>
-          </div>
-          
-          <!-- Linked Items Section -->
-          <div v-if="getLinkedItems(editingCard.description).length > 0" class="form-group">
-            <label>Linked Items</label>
-            <div class="linked-items-list">
-              <div 
-                v-for="item in getLinkedItems(editingCard.description)" 
-                :key="item.href"
-                class="linked-item"
-                @click="navigateToLinkedItem(item)"
-              >
-                <Icon :name="item.type === 'note' ? 'file' : 'board'" :size="14" />
-                <span class="linked-item-name">{{ item.name }}</span>
-                <button 
-                  type="button" 
-                  class="linked-item-remove" 
-                  @click.stop="removeLinkedItem(item)"
-                  title="Remove link"
-                >
-                  <Icon name="x" :size="12" />
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <div class="modal-actions">
-            <button type="button" class="btn btn-warning" @click="archiveCard">Archive</button>
-            <button type="button" class="btn btn-danger" @click="confirmDeleteCard">Delete</button>
-            <button type="button" class="btn btn-secondary" @click="closeEditCardModal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Changes</button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <!-- Card modal (view-first) -->
+    <CardEditModal
+      :visible="showEditCardModal"
+      :card="editingCard"
+      :labels="currentBoard?.labels || []"
+      @close="closeEditCardModal"
+      @save="handleCardSave"
+      @archive="handleCardArchive"
+      @delete="handleCardDelete"
+      @navigateToItem="navigateToLinkedItem"
+    />
 
     <!-- Labels Management Panel -->
     <div v-if="showLabelsPanel" class="side-panel-overlay" @click.self="showLabelsPanel = false">
@@ -742,11 +649,14 @@ import { useNotesStore } from '../stores/notes'
 import type { Board, BoardWithLists, Card, List, BoardLabel } from '../types'
 import { WorkspaceSidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle } from '../components/workspace'
 import Draggable from 'vuedraggable'
-import ExplorerTree from '../components/ExplorerTree.vue'
-import Icon from '../components/Icon.vue'
-import ConfirmModal from '../components/ConfirmModal.vue'
-import PromptModal from '../components/PromptModal.vue'
+import ExplorerTree from '../components/common/ui/ExplorerTree.vue'
+import Icon from '../components/common/ui/Icon.vue'
+import ConfirmModal from '../components/common/modals/ConfirmModal.vue'
+import PromptModal from '../components/common/modals/PromptModal.vue'
+import CardEditModal from '../components/boards/CardEditModal.vue'
 import { toApiIso, normalizeForInput } from '../utils/dates'
+import logger from '@/utils/logger'
+import { openFloatingMenu } from '@/utils/floatingMenu'
 import { toDatetimeLocal } from '../utils/dates'
 
 const router = useRouter()
@@ -857,6 +767,47 @@ const hasActiveFilters = computed(() => {
   return selectedLabelFilters.value.length > 0 || dueDateFilter.value !== ''
 })
 
+// Persistence keys
+const BOARDS_VIEW_KEY = 'viewState.boards'
+
+function loadBoardsViewState() {
+  try {
+    const raw = localStorage.getItem(BOARDS_VIEW_KEY)
+    if (!raw) return
+    const data = JSON.parse(raw)
+    if (data.selectedBoardId) selectedBoardId.value = data.selectedBoardId
+    if (typeof data.sidebarWidth === 'number') sidebarWidth.value = data.sidebarWidth
+    if (typeof data.showLabelsPanel === 'boolean') showLabelsPanel.value = data.showLabelsPanel
+    if (typeof data.showArchivePanel === 'boolean') showArchivePanel.value = data.showArchivePanel
+    if (typeof data.showAutomationsPanel === 'boolean') showAutomationsPanel.value = data.showAutomationsPanel
+    if (typeof data.showFiltersPanel === 'boolean') showFiltersPanel.value = data.showFiltersPanel
+    if (typeof data.hideDoneCards === 'boolean') hideDoneCards.value = data.hideDoneCards
+    if (Array.isArray(data.selectedLabelFilters)) selectedLabelFilters.value = data.selectedLabelFilters
+    if (typeof data.dueDateFilter === 'string') dueDateFilter.value = data.dueDateFilter
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveBoardsViewState() {
+  try {
+    const data = {
+      selectedBoardId: selectedBoardId.value,
+      sidebarWidth: sidebarWidth.value,
+      showLabelsPanel: showLabelsPanel.value,
+      showArchivePanel: showArchivePanel.value,
+      showAutomationsPanel: showAutomationsPanel.value,
+      showFiltersPanel: showFiltersPanel.value,
+      hideDoneCards: hideDoneCards.value,
+      selectedLabelFilters: selectedLabelFilters.value,
+      dueDateFilter: dueDateFilter.value
+    }
+    localStorage.setItem(BOARDS_VIEW_KEY, JSON.stringify(data))
+  } catch (e) {
+    // ignore
+  }
+}
+
 // NOTE: `activeLists` is used for the visible (non-archived) lists and drag-and-drop.
 
 // Active lists used for drag-and-drop. We keep a local copy so vuedraggable can mutate it,
@@ -894,7 +845,7 @@ const isAutomationValid = computed(() => {
 const getFilteredCards = (cards: Card[]) => {
   return cards.filter(card => {
     if (card.archived) return false
-    if (hideDoneCards.value && (card as any).status === 'done') return false
+    if (hideDoneCards.value && card.status === 'done') return false
     
     // Label filter
     if (selectedLabelFilters.value.length > 0) {
@@ -953,7 +904,7 @@ async function performReorder(listIds: string[]) {
     // Refresh board once after successful reorder
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to persist list reorder:', error)
+    logger.error('Failed to persist list reorder:', error)
     // Try to refresh to re-sync UI
     if (currentBoard.value) await fetchBoard(currentBoard.value.board.id)
   }
@@ -1005,7 +956,7 @@ async function fetchBoard(boardId: string) {
     const response = await boardsApi.get(boardId)
     currentBoard.value = response.data
   } catch (error) {
-    console.error('Failed to fetch board:', error)
+    logger.error('Failed to fetch board:', error)
     currentBoard.value = null
   }
 }
@@ -1041,7 +992,7 @@ onMounted(async () => {
       }
     }
   } catch (e) {
-    console.error('Failed to open card from query params', e)
+    logger.error('Failed to open card from query params', e)
   }
 })
 
@@ -1141,7 +1092,7 @@ async function handleDrop(data: { draggedId: string; draggedType: 'note' | 'fold
       await explorerStore.fetchBoards()
     }
   } catch (error) {
-    console.error('Failed to move item:', error)
+    logger.error('Failed to move item:', error)
   }
 }
 
@@ -1181,191 +1132,48 @@ function closeContextMenu() {
   contextMenu.value.visible = false
 }
 
+// Remove any existing floating context-menu elements from the DOM.
+// This ensures opening a new context menu closes previously opened ones.
+// legacy local close helper removed - use closeAllFloatingMenus() from utils
+
 // Kanban card context menu
 function openCardContextMenu(event: MouseEvent, card: Card, _listId: string) {
-  const menu = document.createElement('div')
-  menu.className = 'context-menu'
-  menu.style.cssText = `
-    position: fixed;
-    left: ${event.clientX}px;
-    top: ${event.clientY}px;
-    background: var(--bg-secondary, #fff);
-    border: 1px solid var(--border-primary, #ddd);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 4px 0;
-    z-index: 1000;
-    min-width: 160px;
-  `
-
-  const menuItems = [
-    { label: 'Edit', action: () => openCardModal(card) },
-    { label: 'Archive', action: () => archiveCard() },
-    { label: 'Delete', action: () => { deleteCardModalVisible.value = true; editingCard.value = card } }
-  ]
-
-  menuItems.forEach(item => {
-    const btn = document.createElement('button')
-    btn.className = 'context-menu-item'
-    btn.style.cssText = `
-      width: 100%;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      text-align: left;
-      cursor: pointer;
-      color: var(--text-primary, #000);
-      font-size: 14px;
-    `
-    btn.textContent = item.label
-    btn.addEventListener('click', () => {
-      item.action()
-      document.body.removeChild(menu)
-    })
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = 'var(--bg-hover, #f0f0f0)'
-    })
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'none'
-    })
-    menu.appendChild(btn)
-  })
-
-  document.body.appendChild(menu)
-  
-  const closeMenu = () => {
-    if (document.body.contains(menu)) {
-      document.body.removeChild(menu)
-    }
+  try {
+    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
+      { label: 'Edit', action: () => openCardModal(card) },
+      { label: 'Archive', action: () => archiveCard() },
+      { label: 'Delete', action: () => { deleteCardModalVisible.value = true; editingCard.value = card }, danger: true }
+    ]
+    openFloatingMenu(menuItems, event.clientX, event.clientY)
+  } catch (e) {
+    logger.error('openCardContextMenu failed', e)
   }
-  
-  setTimeout(() => {
-    document.addEventListener('click', closeMenu, { once: true })
-  }, 0)
 }
 
 // Kanban list context menu
 function openListContextMenu(event: MouseEvent, list: List) {
-  const menu = document.createElement('div')
-  menu.className = 'context-menu'
-  menu.style.cssText = `
-    position: fixed;
-    left: ${event.clientX}px;
-    top: ${event.clientY}px;
-    background: var(--bg-secondary, #fff);
-    border: 1px solid var(--border-primary, #ddd);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 4px 0;
-    z-index: 1000;
-    min-width: 160px;
-  `
-
-  const menuItems = [
-    { label: 'Add Card', action: () => openAddCardModal(list.id) },
-    { label: 'Archive', action: () => archiveList(list.id) },
-    { label: 'Delete', action: () => confirmDeleteList(list.id) }
-  ]
-
-  menuItems.forEach(item => {
-    const btn = document.createElement('button')
-    btn.className = 'context-menu-item'
-    btn.style.cssText = `
-      width: 100%;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      text-align: left;
-      cursor: pointer;
-      color: var(--text-primary, #000);
-      font-size: 14px;
-    `
-    btn.textContent = item.label
-    btn.addEventListener('click', () => {
-      item.action()
-      document.body.removeChild(menu)
-    })
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = 'var(--bg-hover, #f0f0f0)'
-    })
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'none'
-    })
-    menu.appendChild(btn)
-  })
-
-  document.body.appendChild(menu)
-  
-  const closeMenu = () => {
-    if (document.body.contains(menu)) {
-      document.body.removeChild(menu)
-    }
+  try {
+    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
+      { label: 'Add Card', action: () => openAddCardModal(list.id) },
+      { label: 'Archive', action: () => archiveList(list.id) },
+      { label: 'Delete', action: () => confirmDeleteList(list.id), danger: true }
+    ]
+    openFloatingMenu(menuItems, event.clientX, event.clientY)
+  } catch (e) {
+    logger.error('openListContextMenu failed', e)
   }
-  
-  setTimeout(() => {
-    document.addEventListener('click', closeMenu, { once: true })
-  }, 0)
 }
 
 // Board background context menu (right-click on empty space in board)
 function openBoardContextMenu(event: MouseEvent) {
-  const menu = document.createElement('div')
-  menu.className = 'context-menu'
-  menu.style.cssText = `
-    position: fixed;
-    left: ${event.clientX}px;
-    top: ${event.clientY}px;
-    background: var(--bg-secondary, #fff);
-    border: 1px solid var(--border-primary, #ddd);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 4px 0;
-    z-index: 1000;
-    min-width: 160px;
-  `
-
-  const menuItems = [
-    { label: 'Add List', action: () => openAddListModal() }
-  ]
-
-  menuItems.forEach(item => {
-    const btn = document.createElement('button')
-    btn.className = 'context-menu-item'
-    btn.style.cssText = `
-      width: 100%;
-      padding: 8px 16px;
-      border: none;
-      background: none;
-      text-align: left;
-      cursor: pointer;
-      color: var(--text-primary, #000);
-      font-size: 14px;
-    `
-    btn.textContent = item.label
-    btn.addEventListener('click', () => {
-      item.action()
-      document.body.removeChild(menu)
-    })
-    btn.addEventListener('mouseenter', () => {
-      btn.style.background = 'var(--bg-hover, #f0f0f0)'
-    })
-    btn.addEventListener('mouseleave', () => {
-      btn.style.background = 'none'
-    })
-    menu.appendChild(btn)
-  })
-
-  document.body.appendChild(menu)
-
-  const closeMenu = () => {
-    if (document.body.contains(menu)) {
-      document.body.removeChild(menu)
-    }
+  try {
+    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
+      { label: 'Add List', action: () => openAddListModal() }
+    ]
+    openFloatingMenu(menuItems, event.clientX, event.clientY)
+  } catch (e) {
+    logger.error('openBoardContextMenu failed', e)
   }
-
-  setTimeout(() => {
-    document.addEventListener('click', closeMenu, { once: true })
-  }, 0)
 }
 
 // Board CRUD
@@ -1420,7 +1228,7 @@ async function saveBoardModal() {
       await fetchBoard(selectedBoardId.value)
     }
   } catch (error) {
-    console.error('Failed to save board:', error)
+    logger.error('Failed to save board:', error)
   }
 }
 
@@ -1438,7 +1246,7 @@ async function handleDeleteBoard() {
     selectedBoardId.value = null
     currentBoard.value = null
   } catch (error) {
-    console.error('Failed to delete board:', error)
+    logger.error('Failed to delete board:', error)
   }
 }
 
@@ -1462,7 +1270,7 @@ async function addList() {
     newListName.value = ''
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to add list:', error)
+    logger.error('Failed to add list:', error)
   }
 }
 
@@ -1479,7 +1287,7 @@ async function handleDeleteList() {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to delete list:', error)
+    logger.error('Failed to delete list:', error)
   }
 }
 
@@ -1490,7 +1298,7 @@ async function archiveList(listId: string) {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to archive list:', error)
+    logger.error('Failed to archive list:', error)
   }
 }
 
@@ -1501,7 +1309,7 @@ async function restoreList(listId: string) {
       await Promise.all([fetchBoard(currentBoard.value.board.id), fetchArchivedItems()])
     }
   } catch (error) {
-    console.error('Failed to restore list:', error)
+    logger.error('Failed to restore list:', error)
   }
 }
 
@@ -1528,7 +1336,7 @@ async function addCard() {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to add card:', error)
+    logger.error('Failed to add card:', error)
   }
 }
 
@@ -1542,47 +1350,53 @@ function closeEditCardModal() {
   showEditCardModal.value = false
   editingCard.value = null
 }
-
-async function updateCard() {
-  if (!editingCard.value) return
-  
+ 
+// Handler for CardEditModal 'save' event
+async function handleCardSave(card: Card) {
+  if (!card) return
   try {
     const payload: any = {
-      title: editingCard.value.title,
-      description: editingCard.value.description,
-      labels: editingCard.value.labels
+      title: card.title,
+      description: card.description,
+      labels: card.labels || []
     }
-    if (editingCard.value.due_date) payload.due_date = toApiIso(editingCard.value.due_date)
-      if ((editingCard.value as any).status) payload.status = (editingCard.value as any).status
+    if (card.due_date) payload.due_date = toApiIso(card.due_date)
+    if (card.status) payload.status = card.status
 
-    await cardsApi.update(editingCard.value.id, payload)
+    await cardsApi.update(card.id, payload)
     closeEditCardModal()
-    if (currentBoard.value) {
-      await fetchBoard(currentBoard.value.board.id)
-    }
+    if (currentBoard.value) await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to update card:', error)
+    logger.error('Failed to save card from modal:', error)
+  }
+}
+
+// Handler for CardEditModal 'archive' event
+async function handleCardArchive() {
+  if (!editingCard.value) return
+  try {
+    await cardsApi.archive(editingCard.value.id)
+    closeEditCardModal()
+    if (currentBoard.value) await fetchBoard(currentBoard.value.board.id)
+  } catch (error) {
+    logger.error('Failed to archive card from modal:', error)
+  }
+}
+
+// Handler for CardEditModal 'delete' event
+async function handleCardDelete() {
+  if (!editingCard.value) return
+  try {
+    await cardsApi.delete(editingCard.value.id)
+    closeEditCardModal()
+    if (currentBoard.value) await fetchBoard(currentBoard.value.board.id)
+  } catch (error) {
+    logger.error('Failed to delete card from modal:', error)
   }
 }
 
 // Due date handlers for the edit card modal
-function onEditDueDateFocus() {
-  if (!editingCard.value) return
-  if (!editingCard.value.due_date) {
-    // default to today at 18:00 local
-    editingCard.value.due_date = toDatetimeLocal(new Date(new Date().setHours(18, 0, 0, 0)))
-  }
-}
-
-function onEditDueDateChange(e: Event) {
-  if (!editingCard.value) return
-  const val = (e.target as HTMLInputElement).value
-  if (!val) return
-  const normalized = normalizeForInput(val)
-  if (normalized && normalized !== val) {
-    editingCard.value.due_date = normalized
-  }
-}
+ 
 
 // Due date handlers for the add card modal
 function onAddDueDateFocus() {
@@ -1603,9 +1417,7 @@ function onAddDueDateChange(e: Event) {
   }
 }
 
-function confirmDeleteCard() {
-  deleteCardModalVisible.value = true
-}
+ 
 
 async function handleDeleteCard() {
   deleteCardModalVisible.value = false
@@ -1618,7 +1430,7 @@ async function handleDeleteCard() {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to delete card:', error)
+    logger.error('Failed to delete card:', error)
   }
 }
 
@@ -1631,7 +1443,7 @@ async function archiveCard() {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to archive card:', error)
+    logger.error('Failed to archive card:', error)
   }
 }
 
@@ -1644,19 +1456,11 @@ async function restoreCard(cardId: string) {
       await Promise.all([fetchBoard(currentBoard.value.board.id), fetchArchivedItems()])
     }
   } catch (error) {
-    console.error('Failed to restore card:', error)
+    logger.error('Failed to restore card:', error)
   }
 }
 
-function toggleCardLabel(labelId: string) {
-  if (!editingCard.value) return
-  const index = editingCard.value.labels.indexOf(labelId)
-  if (index === -1) {
-    editingCard.value.labels.push(labelId)
-  } else {
-    editingCard.value.labels.splice(index, 1)
-  }
-}
+ 
 
 // Archive Panel
 async function fetchArchivedItems() {
@@ -1669,7 +1473,7 @@ async function fetchArchivedItems() {
     archivedLists.value = listsRes.data
     archivedCards.value = cardsRes.data
   } catch (error) {
-    console.error('Failed to fetch archived items:', error)
+    logger.error('Failed to fetch archived items:', error)
   }
 }
 
@@ -1689,7 +1493,7 @@ async function createLabel() {
     newLabelName.value = ''
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to create label:', error)
+    logger.error('Failed to create label:', error)
   }
 }
 
@@ -1713,7 +1517,7 @@ async function confirmDeleteLabel() {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to delete label:', error)
+    logger.error('Failed to delete label:', error)
   }
 }
 
@@ -1770,7 +1574,7 @@ async function createAutomation() {
     intervalMinutes.value = null
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to create automation:', error)
+    logger.error('Failed to create automation:', error)
   }
 }
 
@@ -1781,7 +1585,7 @@ async function toggleAutomation(id: string) {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to toggle automation:', error)
+    logger.error('Failed to toggle automation:', error)
   }
 }
 
@@ -1792,7 +1596,7 @@ async function deleteAutomation(id: string) {
       await fetchBoard(currentBoard.value.board.id)
     }
   } catch (error) {
-    console.error('Failed to delete automation:', error)
+    logger.error('Failed to delete automation:', error)
   }
 }
 
@@ -1948,7 +1752,7 @@ async function onCardDrop(event: DragEvent, targetListId: string) {
     })
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to move card:', error)
+    logger.error('Failed to move card:', error)
   }
   
   onCardDragEnd()
@@ -1973,7 +1777,7 @@ async function onCardDropOnCard(event: DragEvent, targetCardId: string, targetIn
         await fetchBoard(currentBoard.value!.board.id)
       }
     } catch (e) {
-      console.error('Failed to create link:', e)
+      logger.error('Failed to create link:', e)
     }
     noteDropTargetCardId.value = ''
     return
@@ -1989,7 +1793,7 @@ async function onCardDropOnCard(event: DragEvent, targetCardId: string, targetIn
     })
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to move card:', error)
+    logger.error('Failed to move card:', error)
   }
   
   onCardDragEnd()
@@ -2013,7 +1817,7 @@ async function onCardDropAtEnd(event: DragEvent, targetListId: string) {
     })
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
-    console.error('Failed to move card:', error)
+    logger.error('Failed to move card:', error)
   }
   
   onCardDragEnd()
@@ -2079,7 +1883,7 @@ function onBoardContentDrop(event: DragEvent) {
         }
       }
     } catch (e) {
-      console.error('Failed to parse dropped item:', e)
+      logger.error('Failed to parse dropped item:', e)
     }
   }
 }
@@ -2111,44 +1915,15 @@ interface LinkedItem {
   fullMatch: string
 }
 
-function getLinkedItems(description: string | undefined): LinkedItem[] {
-  if (!description) return []
-  
-  const items: LinkedItem[] = []
-  // Match markdown-style links: 📎 [name](notes://id) or [name](boards://id)
-  const linkPattern = /📎?\s*\[([^\]]+)\]\((notes|boards):\/\/([^)]+)\)/g
-  let match
-  
-  while ((match = linkPattern.exec(description)) !== null) {
-    items.push({
-      type: match[2] as 'note' | 'board',
-      name: match[1],
-      id: match[3],
-      href: `${match[2]}://${match[3]}`,
-      fullMatch: match[0]
-    })
-  }
-  
-  return items
-}
-
 function navigateToLinkedItem(item: LinkedItem) {
   closeEditCardModal()
-  
+
   if (item.type === 'note') {
     localStorage.setItem('openNoteId', item.id)
     router.push('/notes')
   } else {
     selectBoard(item.id)
   }
-}
-
-function removeLinkedItem(item: LinkedItem) {
-  if (!editingCard.value) return
-  
-  // Remove the link from description
-  const newDescription = editingCard.value.description?.replace(item.fullMatch, '').trim() || ''
-  editingCard.value.description = newDescription
 }
 
 // Helpers
@@ -2201,11 +1976,23 @@ function stopResize() {
 
 // Lifecycle
 onMounted(async () => {
+  // Restore saved view state (if any)
+  loadBoardsViewState()
+
   await explorerStore.fetchAll()
   document.addEventListener('click', closeContextMenu)
   document.addEventListener('click', closeBoardMenuOnClickOutside)
-  
-  // Check if a board was selected from another view
+
+  // If a board was saved in the view state, select it
+  if (selectedBoardId.value) {
+    try {
+      await selectBoard(selectedBoardId.value)
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  // Check if a board was requested from another view (fallback)
   const storedBoardId = localStorage.getItem('selectedBoardId')
   if (storedBoardId) {
     localStorage.removeItem('selectedBoardId')
@@ -2214,6 +2001,8 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  // Persist view-specific state so switching away and back restores context
+  saveBoardsViewState()
   document.removeEventListener('click', closeContextMenu)
   document.removeEventListener('click', closeBoardMenuOnClickOutside)
 })
@@ -2461,33 +2250,29 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.card-edit-btn {
+/* edit button removed: clicking card opens edit modal */
+
+/* Done badge: small pill in the top-right corner. Reserve space so it doesn't overlap the edit button */
+
+.card-done-badge {
   position: absolute;
-  top: 0.375rem;
+  top: 0.35rem;
   right: 0.375rem;
-  display: flex;
+  background: var(--success);
+  color: #fff;
+  font-size: 11px;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+  z-index: 9;
+  line-height: 1;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  border-radius: 4px;
-  color: var(--text-muted);
-  cursor: pointer;
-  opacity: 0;
-  transition: all 0.15s;
-  z-index: 10;
 }
 
-.kanban-card:hover .card-edit-btn {
-  opacity: 1;
-}
-
-.card-edit-btn:hover {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: white;
+.card-done-badge small {
+  opacity: 0.9;
 }
 
 .kanban-card h4 {

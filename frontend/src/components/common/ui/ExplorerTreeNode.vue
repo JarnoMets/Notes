@@ -105,8 +105,10 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import type { ExplorerItem } from '../stores/explorer';
+import type { ExplorerItem } from '@/stores/explorer';
 import Icon from './Icon.vue';
+import logger from '@/utils/logger'
+import { openFloatingMenu } from '@/utils/floatingMenu'
 
 const props = defineProps<{
   item: ExplorerItem;
@@ -159,89 +161,33 @@ function handleToggle() {
 
 function handleContextMenu(event: MouseEvent) {
   emit('select', props.item);
-  
-  const menu = document.createElement('div');
-  menu.className = 'context-menu';
-  menu.style.cssText = `
-    position: fixed;
-    left: ${event.clientX}px;
-    top: ${event.clientY}px;
-    background: var(--bg-secondary, #fff);
-    border: 1px solid var(--border-primary, #ddd);
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    padding: 4px 0;
-    z-index: 1000;
-    min-width: 160px;
-  `;
+  try {
+    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = []
 
-  const menuItems = [];
-
-  if (isFolder.value) {
-    if (props.item.type === 'folder') {
-      menuItems.push({ label: 'New Note', action: () => emit('create-note', props.item.id) });
-      menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) });
-    } else {
-      menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) });
+    if (isFolder.value) {
+      if (props.item.type === 'folder') {
+        menuItems.push({ label: 'New Note', action: () => emit('create-note', props.item.id) })
+        menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) })
+      } else {
+        menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) })
+      }
+      menuItems.push({ divider: true })
     }
-    menuItems.push({ divider: true });
+
+    menuItems.push({ label: 'Rename', action: () => emit('rename', props.item) })
+
+    if (props.item.type === 'note' || props.item.type === 'folder') {
+      menuItems.push({ label: props.item.isImportant ? 'Remove Star' : 'Star', action: () => emit('toggle-importance', props.item) })
+    }
+
+    menuItems.push({ label: props.item.isUrgent ? 'Remove Urgent' : 'Mark Urgent', action: () => emit('toggle-urgent', props.item) })
+    menuItems.push({ divider: true })
+    menuItems.push({ label: 'Delete', action: () => emit('delete', props.item), danger: true })
+
+    openFloatingMenu(menuItems, event.clientX, event.clientY)
+  } catch (e) {
+    logger.error('handleContextMenu failed', e)
   }
-
-  menuItems.push({ label: 'Rename', action: () => emit('rename', props.item) });
-
-  if (props.item.type === 'note' || props.item.type === 'folder') {
-    menuItems.push({
-      label: props.item.isImportant ? 'Remove Star' : 'Star',
-      action: () => emit('toggle-importance', props.item)
-    });
-  }
-  
-  // Urgent option for all item types
-  menuItems.push({
-    label: props.item.isUrgent ? 'Remove Urgent' : 'Mark Urgent',
-    action: () => emit('toggle-urgent', props.item)
-  });
-
-  menuItems.push({ divider: true });
-  menuItems.push({ label: 'Delete', action: () => emit('delete', props.item), danger: true });
-
-  menuItems.forEach(item => {
-    if (item.divider) {
-      const divider = document.createElement('div');
-      divider.style.cssText = 'height: 1px; background: var(--border-primary, #ddd); margin: 4px 8px;';
-      menu.appendChild(divider);
-    } else {
-      const menuItem = document.createElement('div');
-      menuItem.textContent = item.label ?? '';
-      menuItem.style.cssText = `
-        padding: 6px 12px;
-        cursor: pointer;
-        font-size: 13px;
-        color: ${item.danger ? 'var(--danger, #e53935)' : 'var(--text-primary, #333)'};
-      `;
-      menuItem.addEventListener('mouseenter', () => {
-        menuItem.style.background = 'var(--bg-hover, #f5f5f5)';
-      });
-      menuItem.addEventListener('mouseleave', () => {
-        menuItem.style.background = 'transparent';
-      });
-      menuItem.addEventListener('click', () => {
-        item.action?.();
-        menu.remove();
-      });
-      menu.appendChild(menuItem);
-    }
-  });
-
-  document.body.appendChild(menu);
-
-  const closeMenu = (e: MouseEvent) => {
-    if (!menu.contains(e.target as Node)) {
-      menu.remove();
-      document.removeEventListener('click', closeMenu);
-    }
-  };
-  setTimeout(() => document.addEventListener('click', closeMenu), 0);
 }
 
 function onDragStart(event: DragEvent) {
@@ -365,7 +311,7 @@ function onDrop(event: DragEvent) {
       insertBeforeId
     });
   } catch (e) {
-    console.error('Failed to parse drag data:', e);
+    logger.error('Failed to parse drag data:', e);
   }
 }
 </script>

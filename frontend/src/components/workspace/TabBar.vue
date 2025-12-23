@@ -76,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 export interface Tab {
   id: string

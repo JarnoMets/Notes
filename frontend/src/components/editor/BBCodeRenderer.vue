@@ -48,10 +48,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useNotesStore } from '../stores/notes'
-import { useExplorerStore } from '../stores/explorer'
-import { notesApi } from '../api'
-import { parseBBCode } from '../utils/bbcode'
+import { useNotesStore } from '@/stores/notes'
+import { useExplorerStore } from '@/stores/explorer'
+import { notesApi } from '@/api'
+import { parseBBCode } from '@/utils/bbcode'
 
 interface Props {
   content: string

@@ -14,7 +14,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 defineProps<{
   width: number

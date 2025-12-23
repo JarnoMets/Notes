@@ -144,7 +144,7 @@
 <script setup lang="ts">
 import { ref, computed, reactive } from 'vue'
 import { useSettingsStore, type IcsCalendar } from '@/stores/settings'
-import Icon from './Icon.vue'
+import Icon from '../ui/Icon.vue'
 import ConfirmModal from './ConfirmModal.vue'
 
 defineProps<{
