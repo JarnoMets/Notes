@@ -1,48 +1,49 @@
 <template>
-  <div class="kanban-board">
-    <div class="lists-wrapper">
-      <div 
-        v-for="listWithCards in filteredLists" 
-        :key="listWithCards.list.id" 
-        class="kanban-list"
-        @dragover.prevent="$emit('listDragOver', $event, listWithCards.list.id)"
-        @drop="$emit('cardDrop', $event, listWithCards.list.id)"
-      >
-        <KanbanListHeader
-          :list="listWithCards.list"
-          :card-count="getFilteredCards(listWithCards.cards).length"
-          @archive="$emit('archiveList', listWithCards.list.id)"
-          @delete="$emit('deleteList', listWithCards.list.id)"
-        />
-        
-        <div class="cards-container">
-          <KanbanCard
-            v-for="(card, index) in getFilteredCards(listWithCards.cards)"
-            :key="card.id"
-            :card="card"
-            :labels="labels"
-            :is-drag-over="dragOverCard === card.id"
-            :is-note-drop-target="noteDropTargetCardId === card.id"
-            @click="$emit('openCard', card)"
-            @dragstart="$emit('cardDragStart', $event, card, listWithCards.list.id)"
-            @dragend="$emit('cardDragEnd')"
-            @dragover="$emit('cardDragOver', $event, card.id, index, listWithCards.list.id)"
-            @dragleave="$emit('cardDragLeave')"
-            @drop="$emit('cardDropOnCard', $event, card.id, index, listWithCards.list.id)"
-          />
-          
-          <div 
-            class="card-drop-zone"
-            :class="{ 'active': dropZoneListId === listWithCards.list.id }"
-            @dragover.prevent
-            @drop="$emit('cardDropAtEnd', $event, listWithCards.list.id)"
-          ></div>
-        </div>
+  <div class="kanban-container">
+    <div class="lists-row" style="display: flex; align-items: flex-start; gap: 12px;">
+      <Draggable v-model="listsModel" item-key="list.id" class="lists-wrapper" @end="onListsDragEnd" :animation="150" :handle="'.list-drag-handle'">
+        <template #item="{ element: listWithCards }">
+          <div
+            :key="listWithCards.list.id"
+            class="kanban-list"
+          >
+            <KanbanListHeader
+              :list="listWithCards.list"
+              :card-count="getFilteredCards(listWithCards.cards).length"
+              @archive="$emit('archiveList', listWithCards.list.id)"
+              @delete="$emit('deleteList', listWithCards.list.id)"
+            />
 
-        <button class="add-card-btn" @click="$emit('addCard', listWithCards.list.id)">
-          <Icon name="plus" :size="14" /> Add Card
-        </button>
-      </div>
+            <div class="cards-container">
+              <KanbanCard
+                v-for="(card, index) in getFilteredCards(listWithCards.cards)"
+                :key="card.id"
+                :card="card"
+                :labels="labels"
+                :is-drag-over="dragOverCard === card.id"
+                :is-note-drop-target="noteDropTargetCardId === card.id"
+                @click="$emit('openCard', card)"
+                @dragstart="onCardDragStart($event, card, listWithCards.list.id)"
+                @dragend="onCardDragEnd"
+                @dragover="onCardDragOver($event, card.id)"
+                @dragleave="onCardDragLeave"
+                @drop="onCardDropOnCard($event, index, listWithCards.list.id)"
+              />
+
+              <div
+                class="card-drop-zone"
+                :class="{ 'active': dropZoneListId === listWithCards.list.id }"
+                @dragover.prevent
+                @drop="onCardDropAtEnd($event, listWithCards.list.id)"
+              ></div>
+            </div>
+
+            <button class="add-card-btn" @click="$emit('addCard', listWithCards.list.id)">
+              <Icon name="plus" :size="14" /> Add Card
+            </button>
+          </div>
+        </template>
+      </Draggable>
 
       <div class="kanban-list add-list-placeholder" @click="$emit('addList')">
         <Icon name="plus" :size="16" />
@@ -53,67 +54,69 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
+import Draggable from 'vuedraggable'
 import type { Card, BoardLabel, ListWithCards } from '../../types'
 import KanbanListHeader from './KanbanListHeader.vue'
 import KanbanCard from './KanbanCard.vue'
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 interface Props {
   lists: ListWithCards[]
   labels: BoardLabel[]
-  dragOverCard?: string
-  noteDropTargetCardId?: string
-  dropZoneListId?: string
   selectedLabelFilters?: string[]
   dueDateFilter?: string
+  hideDoneCards?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  dragOverCard: '',
-  noteDropTargetCardId: '',
-  dropZoneListId: '',
   selectedLabelFilters: () => [],
-  dueDateFilter: ''
+  dueDateFilter: '',
+  hideDoneCards: false
 })
 
-defineEmits<{
-  listDragOver: [event: DragEvent, listId: string]
-  cardDrop: [event: DragEvent, listId: string]
-  cardDragStart: [event: DragEvent, card: Card, listId: string]
-  cardDragEnd: []
-  cardDragOver: [event: DragEvent, cardId: string, index: number, listId: string]
-  cardDragLeave: []
-  cardDropOnCard: [event: DragEvent, cardId: string, index: number, listId: string]
-  cardDropAtEnd: [event: DragEvent, listId: string]
+const emit = defineEmits<{
+  'update:lists': [lists: ListWithCards[]]
+  listsDragEnd: []
   openCard: [card: Card]
   addCard: [listId: string]
   addList: []
   archiveList: [listId: string]
   deleteList: [listId: string]
+  moveCard: [cardId: string, fromListId: string, toListId: string, position: number]
 }>()
 
-// Filter lists (exclude archived)
-const filteredLists = computed(() => {
-  return props.lists.filter(lwc => !lwc.list.archived)
+// Drag and drop state
+const draggingCard = ref<Card | null>(null)
+const draggingFromListId = ref<string>('')
+const dragOverCard = ref<string>('')
+const dropZoneListId = ref<string>('')
+const noteDropTargetCardId = ref<string>('')
+
+// v-model for lists
+const listsModel = computed({
+  get: () => props.lists,
+  set: (value) => emit('update:lists', value)
 })
 
 // Filter cards based on filters
 function getFilteredCards(cards: Card[]): Card[] {
   return cards.filter(card => {
     if (card.archived) return false
-    
+    if (props.hideDoneCards && card.status === 'done') return false
+
     // Label filter
     if (props.selectedLabelFilters.length > 0) {
       const hasLabel = props.selectedLabelFilters.some(labelId => card.labels.includes(labelId))
       if (!hasLabel) return false
     }
-    
+
     // Due date filter
     if (props.dueDateFilter) {
       const now = new Date()
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-      
+
       switch (props.dueDateFilter) {
         case 'overdue':
           if (!card.due_date || new Date(card.due_date) >= now) return false
@@ -133,19 +136,70 @@ function getFilteredCards(cards: Card[]): Card[] {
           break
       }
     }
-    
+
     return true
   })
 }
 
-import { computed } from 'vue'
+// Event handlers
+const onListsDragEnd = () => emit('listsDragEnd')
+
+function onCardDragStart(event: DragEvent, card: Card, listId: string) {
+  draggingCard.value = card
+  draggingFromListId.value = listId
+  event.dataTransfer!.effectAllowed = 'move'
+}
+
+function onCardDragEnd() {
+  draggingCard.value = null
+  draggingFromListId.value = ''
+  dragOverCard.value = ''
+  dropZoneListId.value = ''
+  noteDropTargetCardId.value = ''
+}
+
+function onCardDragOver(event: DragEvent, cardId: string) {
+  event.preventDefault()
+  dragOverCard.value = cardId
+}
+
+function onCardDragLeave() {
+  dragOverCard.value = ''
+}
+
+function onCardDropOnCard(event: DragEvent, index: number, listId: string) {
+  event.preventDefault()
+  // Handle card drop on another card
+  if (draggingCard.value && draggingFromListId.value !== listId) {
+    // Move card to new list at specific position
+    emit('moveCard', draggingCard.value.id, draggingFromListId.value, listId, index)
+  }
+  onCardDragEnd()
+}
+
+function onCardDropAtEnd(event: DragEvent, listId: string) {
+  event.preventDefault()
+  dropZoneListId.value = listId
+  // Handle card drop at end of list
+  if (draggingCard.value && draggingFromListId.value !== listId) {
+    // Move card to end of new list
+    emit('moveCard', draggingCard.value.id, draggingFromListId.value, listId, -1)
+  }
+  onCardDragEnd()
+}
 </script>
 
 <style scoped>
-.kanban-board {
+.kanban-container {
   flex: 1;
   overflow-x: auto;
   padding: 1rem;
+}
+
+.lists-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .lists-wrapper {
@@ -231,7 +285,7 @@ import { computed } from 'vue'
 
 /* Responsive */
 @media (max-width: 768px) {
-  .kanban-board {
+  .kanban-container {
     padding: 0.75rem;
   }
 

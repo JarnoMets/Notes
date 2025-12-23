@@ -57,7 +57,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { BoardLabel } from '../../types'
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 defineProps<{
   visible: boolean

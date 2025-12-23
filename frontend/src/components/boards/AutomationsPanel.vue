@@ -108,7 +108,7 @@ import type { AutomationRule, BoardLabel, ListWithCards } from '../../types'
 
 // Alias for component use
 type Automation = AutomationRule
-import Icon from '../Icon.vue'
+import Icon from '../common/ui/Icon.vue'
 
 defineProps<{
   visible: boolean
