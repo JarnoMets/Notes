@@ -36,7 +36,7 @@ const containerRef = ref<HTMLElement | null>(null)
 const isResizing = ref(false)
 const resizeIndex = ref(-1)
 
-function startResize(event: MouseEvent, index: number) {
+function startResize(_event: MouseEvent, index: number) {
   isResizing.value = true
   resizeIndex.value = index
   document.addEventListener('mousemove', onResize)

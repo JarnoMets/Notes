@@ -26,8 +26,6 @@ import GraphCanvas from '../common/ui/GraphCanvas.vue'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
 import type { GraphWithData, GraphNode } from '@/types'
 import logger from '@/utils/logger'
-import { useNotesStore } from '@/stores/notes'
-import { useRouter } from 'vue-router'
 
 const props = defineProps<{
   graphId?: string
@@ -37,9 +35,6 @@ const props = defineProps<{
 const graphData = ref<GraphWithData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-
-const notesStore = useNotesStore()
-const router = useRouter()
 
 async function fetchGraph() {
   if (!props.graphId) return
@@ -119,11 +114,11 @@ async function handleCreateEdge(sourceId: string, targetId: string) {
   }
 }
 
-function handleNodeSelect(nodeId: string | null) {
+function handleNodeSelect(_nodeId: string | null) {
   // TODO
 }
 
-function handleEdgeSelect(edgeId: string | null) {
+function handleEdgeSelect(_edgeId: string | null) {
   // TODO
 }
 
@@ -132,9 +127,9 @@ function handleOpenNode(node: GraphNode) {
     // We need a way to open a note in a new tab/split from here
     // For now, use the global handler or store
     // Ideally, emit an event to the WindowManager
-    window.__openNote?.(node.reference_id)
+    (window as any).__openNote?.(node.reference_id)
   } else if (node.node_type === 'board' && node.reference_id) {
-    window.__openBoard?.(node.reference_id)
+    (window as any).__openBoard?.(node.reference_id)
   }
 }
 </script>

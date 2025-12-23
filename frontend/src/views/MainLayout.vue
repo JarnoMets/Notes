@@ -68,7 +68,6 @@ import { WorkspaceSidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle } fr
 import ExplorerTree from '@/components/common/ui/ExplorerTree.vue'
 import WindowManager from '@/components/window-manager/WindowManager.vue'
 import PromptModal from '@/components/common/modals/PromptModal.vue'
-import logger from '@/utils/logger'
 
 const layoutStore = useLayoutStore()
 const explorerStore = useExplorerStore()
@@ -190,7 +189,7 @@ function handleCreateBoardFolder(parentId: string | null) {
 
 function handleCreateGraph(folderId: string | null) {
   const name = prompt('Graph Name')
-  if (name) explorerStore.createGraph(name, folderId)
+  if (name) explorerStore.createGraph(name, undefined, folderId)
 }
 
 function handleCreateGraphFolder(parentId: string | null) {
@@ -227,7 +226,7 @@ function handleDelete(item: ExplorerItem) {
   }
 }
 
-function handleDrop(data: any) {
+function handleDrop() {
   // TODO: Handle move
 }
 

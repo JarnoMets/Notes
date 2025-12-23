@@ -132,7 +132,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore, themes, type ThemeName, type Theme } from './stores/theme'
 import { useSettingsStore } from './stores/settings'
-import { useNotesStore } from './stores/notes'
 import SettingsModal from './components/common/modals/SettingsModal.vue'
 
 const router = useRouter()
@@ -140,7 +139,6 @@ const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const settingsStore = useSettingsStore()
-const notesStore = useNotesStore()
 
 // Update document title when route changes
 watchEffect(() => {

@@ -134,8 +134,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import type { GraphNode, GraphEdge, NodeType, NodeShape, EdgeStyle } from '@/types/graph'
+import { ref } from 'vue'
+import type { GraphNode, GraphEdge, NodeType, EdgeStyle } from '@/types/graph'
 import logger from '@/utils/logger'
 
 const props = defineProps<{

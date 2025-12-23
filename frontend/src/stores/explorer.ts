@@ -443,7 +443,7 @@ export const useExplorerStore = defineStore('explorer', () => {
   }
   
   // Selection
-  function selectItem(id: string, type: 'note' | 'folder' | 'board' | 'board-folder') {
+  function selectItem(id: string, type: 'note' | 'folder' | 'board' | 'board-folder' | 'graph' | 'graph-folder') {
     selectedItemId.value = id
     selectedItemType.value = type
   }
