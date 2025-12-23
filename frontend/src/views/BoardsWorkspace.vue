@@ -310,6 +310,29 @@ const isMobileSidebarOpen = ref(false)
 const currentBoard = ref<BoardWithLists | null>(null)
 const selectedBoardId = ref<string | null>(null)
 
+// Persistence
+const BOARDS_SELECTED_KEY = 'boards.selectedBoardId'
+
+function loadSelectedBoard() {
+  try {
+    const id = localStorage.getItem(BOARDS_SELECTED_KEY)
+    if (id && id !== 'null') {
+      selectedBoardId.value = id
+      fetchBoard(id)
+    }
+  } catch (e) {
+    // ignore
+  }
+}
+
+function saveSelectedBoard(id: string | null) {
+  try {
+    localStorage.setItem(BOARDS_SELECTED_KEY, id || '')
+  } catch (e) {
+    // ignore
+  }
+}
+
 // Archive state
 const archivedLists = ref<any[]>([])
 const archivedCards = ref<any[]>([])
@@ -467,6 +490,7 @@ async function selectBoard(boardId: string) {
   selectedBoardId.value = boardId
   explorerStore.selectItem(boardId, 'board')
   await fetchBoard(boardId)
+  saveSelectedBoard(boardId)
   // Close mobile sidebar when a board is selected
   isMobileSidebarOpen.value = false
 }
@@ -491,6 +515,9 @@ onMounted(async () => {
           }
         }
       }
+    } else {
+      // No query params, load last selected board
+      loadSelectedBoard()
     }
   } catch (e) {
     logger.error('Failed to open card from query params', e)
@@ -568,16 +595,16 @@ async function handleDrop(data: { draggedId: string; draggedType: 'note' | 'fold
   try {
     if (data.draggedType === 'note') {
       await explorerStore.moveNote(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchNotes()
+      await explorerStore.fetchNotesTree()
     } else if (data.draggedType === 'folder') {
       await explorerStore.moveFolder(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchNotes()
+      await explorerStore.fetchNotesTree()
     } else if (data.draggedType === 'board') {
       await explorerStore.moveBoard(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchBoards()
+      await explorerStore.fetchBoardsTree()
     } else if (data.draggedType === 'board-folder') {
       await explorerStore.moveBoardFolder(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchBoards()
+      await explorerStore.fetchBoardsTree()
     }
   } catch (error) {
     logger.error('Failed to move item:', error)
@@ -597,6 +624,7 @@ async function handleDeleteBoard() {
     await explorerStore.deleteBoard(selectedBoardId.value)
     selectedBoardId.value = null
     currentBoard.value = null
+    saveSelectedBoard(null)
   } catch (error) {
     logger.error('Failed to delete board:', error)
   }

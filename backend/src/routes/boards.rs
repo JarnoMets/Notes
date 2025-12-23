@@ -124,8 +124,17 @@ pub async fn get_boards(state: web::Data<AppState>, req: HttpRequest) -> impl Re
 pub async fn get_boards_tree(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let user_id = require_auth!(req, state);
 
+    // Check cache first
+    if let Some(tree) = state.cache.get_boards_tree(&user_id).await {
+        return ok(tree);
+    }
+
     match state.db.get_boards_tree(&user_id).await {
-        Ok(tree) => ok(tree),
+        Ok(tree) => {
+            // Cache the result
+            let _ = state.cache.set_boards_tree(user_id.clone(), tree.clone()).await;
+            ok(tree)
+        }
         Err(DbError::NotFound) => not_found("Boards tree"),
         Err(e) => internal_error_logged("Failed to get boards tree", e),
     }
@@ -163,7 +172,7 @@ pub async fn create_board(
     };
 
     let board = Board::new(
-        user_id,
+        user_id.clone(),
         body.folder_id.clone(),
         body.name.clone(),
         body.description.clone(),
@@ -172,7 +181,11 @@ pub async fn create_board(
     );
 
     match state.db.create_board(&board).await {
-        Ok(board) => created(board),
+        Ok(board) => {
+            // Invalidate cache
+            let _ = state.cache.invalidate_boards_tree(&user_id).await;
+            created(board)
+        }
         Err(e) => internal_error_logged("Failed to create board", e),
     }
 }
@@ -202,7 +215,11 @@ pub async fn update_board(
         )
         .await
     {
-        Ok(board) => ok(board),
+        Ok(board) => {
+            // Invalidate cache
+            let _ = state.cache.invalidate_boards_tree(&user_id).await;
+            ok(board)
+        }
         Err(DbError::NotFound) => not_found("Board"),
         Err(e) => internal_error_logged("Failed to update board", e),
     }
@@ -247,7 +264,11 @@ pub async fn delete_board(
     let id = path.into_inner();
 
     match state.db.delete_board(&id, &user_id).await {
-        Ok(()) => no_content(),
+        Ok(()) => {
+            // Invalidate cache
+            let _ = state.cache.invalidate_boards_tree(&user_id).await;
+            no_content()
+        }
         Err(DbError::NotFound) => not_found("Board"),
         Err(e) => internal_error_logged("Failed to delete board", e),
     }

@@ -27,8 +27,17 @@ pub async fn get_notes(state: web::Data<AppState>, req: HttpRequest) -> impl Res
 pub async fn get_notes_tree(state: web::Data<AppState>, req: HttpRequest) -> impl Responder {
     let user_id = require_auth!(req, state);
 
+    // Check cache first
+    if let Some(tree) = state.cache.get_notes_tree(&user_id).await {
+        return ok(tree);
+    }
+
     match state.db.get_notes_tree(&user_id).await {
-        Ok(tree) => ok(tree),
+        Ok(tree) => {
+            // Cache the result
+            let _ = state.cache.set_notes_tree(user_id.clone(), tree.clone()).await;
+            ok(tree)
+        }
         Err(e) => internal_error_logged("Failed to get notes tree", e),
     }
 }
@@ -84,6 +93,8 @@ pub async fn create_note(
             } else {
                 let _ = state.db.set_note_current_revision_index(&note.id, 0, &user_id).await;
             }
+            // Invalidate cache
+            let _ = state.cache.invalidate_notes_tree(&user_id).await;
             created(note)
         }
         Err(e) => internal_error_logged("Failed to create note", e),
@@ -143,6 +154,8 @@ pub async fn update_note(
             } else {
                 let _ = state.db.set_note_current_revision_index(&note.id, next_idx, &user_id).await;
             }
+            // Invalidate cache
+            let _ = state.cache.invalidate_notes_tree(&user_id).await;
             ok(note)
         }
         Err(DbError::NotFound) => not_found("Note"),
@@ -261,7 +274,11 @@ pub async fn delete_note(
     let id = path.into_inner();
 
     match state.db.delete_note(&id, &user_id).await {
-        Ok(()) => no_content(),
+        Ok(()) => {
+            // Invalidate cache
+            let _ = state.cache.invalidate_notes_tree(&user_id).await;
+            no_content()
+        }
         Err(DbError::NotFound) => not_found("Note"),
         Err(e) => internal_error_logged("Failed to delete note", e),
     }

@@ -1,5 +1,5 @@
 use super::{Database, DbError, DbResult};
-use crate::models::Card;
+use crate::models::{Card, CardAttachment, CardWithAttachments};
 use chrono::{DateTime, Utc};
 use sqlx::Row;
 
@@ -210,5 +210,83 @@ impl Database {
         .await?;
 
         self.get_card(id).await
+    }
+
+    // Card attachment functions
+    pub async fn get_card_attachments(&self, card_id: &str) -> DbResult<Vec<CardAttachment>> {
+        let rows = sqlx::query_as::<_, CardAttachment>(
+            "SELECT id, card_id, filename, original_filename, mime_type, size, created_at FROM card_attachments WHERE card_id = $1 ORDER BY created_at ASC"
+        )
+        .bind(card_id)
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
+
+    pub async fn get_card_attachment(&self, id: &str) -> DbResult<CardAttachment> {
+        let attachment = sqlx::query_as::<_, CardAttachment>(
+            "SELECT id, card_id, filename, original_filename, mime_type, size, created_at FROM card_attachments WHERE id = $1"
+        )
+        .bind(id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(attachment)
+    }
+
+    pub async fn create_card_attachment(&self, attachment: &CardAttachment) -> DbResult<CardAttachment> {
+        sqlx::query(
+            "INSERT INTO card_attachments (id, card_id, filename, original_filename, mime_type, size, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)"
+        )
+        .bind(&attachment.id)
+        .bind(&attachment.card_id)
+        .bind(&attachment.filename)
+        .bind(&attachment.original_filename)
+        .bind(&attachment.mime_type)
+        .bind(attachment.size)
+        .bind(&attachment.created_at)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(attachment.clone())
+    }
+
+    pub async fn delete_card_attachment(&self, id: &str) -> DbResult<CardAttachment> {
+        let attachment = self.get_card_attachment(id).await?;
+
+        sqlx::query("DELETE FROM card_attachments WHERE id = $1")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(attachment)
+    }
+
+    pub async fn get_card_with_attachments(&self, id: &str, user_id: &str) -> DbResult<CardWithAttachments> {
+        // First verify ownership
+        self.verify_card_ownership(id, user_id).await?;
+
+        let card = self.get_card(id).await?;
+        let attachments = self.get_card_attachments(id).await?;
+
+        Ok(CardWithAttachments { card, attachments })
+    }
+
+    pub async fn verify_card_ownership(&self, card_id: &str, user_id: &str) -> DbResult<bool> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            r#"SELECT EXISTS(
+                SELECT 1 FROM cards c
+                JOIN lists l ON c.list_id = l.id
+                JOIN boards b ON l.board_id = b.id
+                WHERE c.id = $1 AND b.user_id = $2
+            )"#
+        )
+        .bind(card_id)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(exists)
     }
 }

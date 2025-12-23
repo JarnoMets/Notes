@@ -487,7 +487,7 @@ const deleteNote = async () => {
   try {
     await notesApi.delete(note.value.id)
     // Refresh the explorer tree to reflect the deletion
-    await explorerStore.fetchNotes()
+    await explorerStore.fetchNotesTree()
     router.push('/notes')
   } catch (error) {
     logger.error('Failed to delete note:', error)

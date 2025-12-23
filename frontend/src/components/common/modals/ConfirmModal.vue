@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="visible" class="modal-overlay" @click.self="handleCancel">
-      <div class="confirm-modal">
+      <div class="modal confirm-modal">
         <div class="modal-header">
           <h3>{{ title }}</h3>
           <button class="modal-close" @click="handleCancel">

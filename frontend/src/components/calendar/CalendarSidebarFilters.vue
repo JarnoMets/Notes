@@ -94,6 +94,7 @@ import MiniCalendar from '@/components/calendar/MiniCalendar.vue'
 import type { Board } from '@/types/board'
 import type { IcsCalendar } from '@/stores/settings'
 import { ref, computed } from 'vue'
+import { dateToString } from '@/utils/calendar'
 
 type MiniCalendarDay = {
   date: string
@@ -140,7 +141,7 @@ const miniCalendarDays = computed((): MiniCalendarDay[] => {
   const days: MiniCalendarDay[] = []
   const today = new Date()
   today.setHours(0,0,0,0)
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = dateToString(today)
 
   const year = miniCalendarDate.value.getFullYear()
   const month = miniCalendarDate.value.getMonth()
@@ -155,7 +156,7 @@ const miniCalendarDays = computed((): MiniCalendarDay[] => {
 
   const current = new Date(startDate)
   while (current <= endDate) {
-    const dateStr = current.toISOString().split('T')[0]
+    const dateStr = dateToString(current)
     days.push({
       date: dateStr,
       dayNumber: current.getDate(),

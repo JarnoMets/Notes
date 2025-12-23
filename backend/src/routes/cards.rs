@@ -21,10 +21,11 @@ pub async fn get_cards(state: web::Data<AppState>, path: web::Path<String>) -> i
     }
 }
 
-pub async fn get_card(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn get_card(state: web::Data<AppState>, req: HttpRequest, path: web::Path<String>) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
 
-    match state.db.get_card(&id).await {
+    match state.db.get_card_with_attachments(&id, &user_id).await {
         Ok(card) => ok(card),
         Err(DbError::NotFound) => not_found("Card"),
         Err(e) => internal_error_logged("Failed to get card", e),

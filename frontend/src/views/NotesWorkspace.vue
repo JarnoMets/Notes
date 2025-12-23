@@ -494,16 +494,16 @@ async function handleDrop(data: { draggedId: string; draggedType: 'note' | 'fold
   try {
     if (data.draggedType === 'note') {
       await explorerStore.moveNote(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchNotes()
+      await explorerStore.fetchNotesTree()
     } else if (data.draggedType === 'folder') {
       await explorerStore.moveFolder(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchNotes()
+      await explorerStore.fetchNotesTree()
     } else if (data.draggedType === 'board') {
       await explorerStore.moveBoard(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchBoards()
+      await explorerStore.fetchBoardsTree()
     } else if (data.draggedType === 'board-folder') {
       await explorerStore.moveBoardFolder(data.draggedId, data.targetId, data.position)
-      await explorerStore.fetchBoards()
+      await explorerStore.fetchBoardsTree()
     }
   } catch (error) {
     logger.error('Failed to move item:', error)

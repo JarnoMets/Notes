@@ -20,6 +20,46 @@ pub struct Card {
     pub updated_at: DateTime<Utc>,
 }
 
+/// File attachment for a card
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct CardAttachment {
+    pub id: String,
+    pub card_id: String,
+    pub filename: String,
+    pub original_filename: String,
+    pub mime_type: String,
+    pub size: i64,
+    pub created_at: DateTime<Utc>,
+}
+
+impl CardAttachment {
+    pub fn new(
+        card_id: String,
+        filename: String,
+        original_filename: String,
+        mime_type: String,
+        size: i64,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4().to_string(),
+            card_id,
+            filename,
+            original_filename,
+            mime_type,
+            size,
+            created_at: Utc::now(),
+        }
+    }
+}
+
+/// Card with its attachments
+#[derive(Debug, Clone, Serialize)]
+pub struct CardWithAttachments {
+    #[serde(flatten)]
+    pub card: Card,
+    pub attachments: Vec<CardAttachment>,
+}
+
 impl Card {
     pub fn new(
         list_id: String,

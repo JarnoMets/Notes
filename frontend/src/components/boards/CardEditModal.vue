@@ -1,30 +1,49 @@
 <template>
   <div v-if="visible" class="modal-overlay" @click.self="$emit('close')">
-    <div class="modal modal-large">
+    <div class="modal modal-large modal-xl card-modal">
       <div class="modal-header">
             <h3>{{ isEditing ? 'Edit Card' : 'Card' }}</h3>
             <div class="modal-header-actions">
-              <button v-if="!isEditing" class="btn btn-primary" @click="isEditing = true">Edit</button>
-              <button v-else class="btn btn-primary" @click="handleSubmit">Save</button>
               <button class="modal-close" @click="$emit('close')">
                 <Icon name="x" :size="14" />
               </button>
             </div>
           </div>
-          <form @submit.prevent="handleSubmit">
+          <form @submit.prevent="handleSubmit" class="card-modal-form">
+            <div class="card-modal-body">
         <div class="form-group">
           <label for="editCardTitle">Title</label>
-          <div v-if="!isEditing" class="view-field">{{ localCard.title }}</div>
+          <div v-if="!isEditing" class="view-title">{{ localCard.title }}</div>
           <input v-else id="editCardTitle" v-model="localCard.title" type="text" required />
         </div>
-        <div class="form-group">
+        <div class="form-group description-group">
           <label for="editCardDescription">Description</label>
-          <div v-if="!isEditing" class="view-field description-view" v-html="localCard.description || '<em>No description</em>'"></div>
-          <textarea v-else id="editCardDescription" v-model="localCard.description" rows="6" placeholder="Add a more detailed description..."></textarea>
+          <div v-if="!isEditing" class="view-description">
+            <BBCodeRenderer 
+              v-if="localCard.description" 
+              :content="localCard.description" 
+              :paneId="'card-modal'" 
+            />
+            <div v-else class="no-description">
+              <em>No description</em>
+            </div>
+          </div>
+          <div v-else class="bbcode-editor-container">
+            <BBCodeEditor
+              :initialContent="localCard.description || ''"
+              :isEditing="true"
+              :paneId="'card-modal'"
+              :attachments="[]"
+              @update:content="localCard.description = $event"
+            />
+          </div>
         </div>
         <div class="form-group">
           <label for="editCardDueDate">Due Date</label>
-          <div v-if="!isEditing" class="view-field">{{ formatDisplayDate(localCard.due_date) }}</div>
+          <div v-if="!isEditing" class="view-due-date">
+            <Icon v-if="localCard.due_date" name="calendar" :size="14" />
+            <span>{{ formatDisplayDate(localCard.due_date) }}</span>
+          </div>
           <input v-else id="editCardDueDate" v-model="localCard.due_date" type="datetime-local" @focus="onDueDateFocus" @change="onDueDateChange" />
         </div>
         <!-- Labels and Status side-by-side on wide screens, stacked on mobile -->
@@ -33,7 +52,8 @@
             <div class="form-group">
               <label>Labels</label>
               <div v-if="!isEditing" class="label-view">
-                <span v-for="label in labels" :key="label.id" class="label-chip" :style="{ backgroundColor: localCard.labels.includes(label.id) ? label.color : 'transparent', color: localCard.labels.includes(label.id) ? '#fff' : 'var(--text-muted)', border: '1px solid ' + label.color }">{{ label.name }}</span>
+                <span v-if="localCard.labels.length === 0" class="no-labels">No labels</span>
+                <span v-for="label in labels" :key="label.id" class="view-label-chip" :style="{ backgroundColor: localCard.labels.includes(label.id) ? label.color : 'transparent', color: localCard.labels.includes(label.id) ? '#fff' : 'var(--text-muted)', border: '1px solid ' + label.color }">{{ label.name }}</span>
               </div>
               <div v-else class="label-selector">
                 <button v-for="label in labels" :key="label.id" type="button" class="label-option" :class="{ selected: localCard.labels.includes(label.id) }" :style="{ backgroundColor: localCard.labels.includes(label.id) ? label.color : 'transparent', borderColor: label.color }" @click="toggleLabel(label.id)">
@@ -45,7 +65,10 @@
             <div class="form-group form-group--small">
               <label>Status</label>
               <div class="status-field">
-                <div v-if="!isEditing" class="view-field">{{ localCard.status === 'done' ? 'Done' : 'Open' }}</div>
+                <div v-if="!isEditing" class="view-status">
+                  <span class="status-indicator" :class="{ 'status-done': localCard.status === 'done' }"></span>
+                  <span>{{ localCard.status === 'done' ? 'Done' : 'Open' }}</span>
+                </div>
                 <label v-else class="checkbox-label">
                   <input type="checkbox" v-model="isDone" />
                   <span class="checkbox-text">Done</span>
@@ -77,14 +100,16 @@
             </div>
           </div>
         </div>
+      </div>
         
         <div class="modal-actions">
           <button type="button" class="btn btn-warning" @click="openArchiveConfirm">Archive</button>
           <button type="button" class="btn btn-danger" @click="openDeleteConfirm">Delete</button>
           <button type="button" class="btn btn-secondary" @click="$emit('close')">Cancel</button>
           <button v-if="!isEditing" type="button" class="btn btn-primary" @click="isEditing = true">Edit</button>
-          <button v-else type="submit" class="btn btn-primary">Save Changes</button>
+          <button v-else type="submit" class="btn btn-primary">Save</button>
         </div>
+      </form>
 
         <!-- Confirmation modals -->
         <ConfirmModal
@@ -106,7 +131,6 @@
           @confirm="handleDeleteConfirm"
           @cancel="showDeleteConfirm = false"
         />
-      </form>
     </div>
   </div>
 </template>
@@ -116,6 +140,8 @@ import { ref, watch, computed } from 'vue'
 import type { Card, BoardLabel } from '../../types'
 import Icon from '../common/ui/Icon.vue'
 import ConfirmModal from '../common/modals/ConfirmModal.vue'
+import BBCodeEditor from '../editor/BBCodeEditor.vue'
+import BBCodeRenderer from '../editor/BBCodeRenderer.vue'
 import { toDatetimeLocal, normalizeForInput } from '../../utils/dates'
 
 export interface LinkedItem {
@@ -338,6 +364,108 @@ function onDueDateChange(e: Event) {
   color: var(--text-primary);
 }
 
+/* View mode styling */
+.view-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  padding: 0.5rem 0;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.view-description {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  border: 1px solid var(--border-primary);
+  min-height: 3rem;
+}
+
+.no-description {
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.75rem;
+}
+
+.bbcode-editor-container {
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.view-due-date {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.view-due-date .icon {
+  color: var(--accent);
+}
+
+.view-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg-tertiary);
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-indicator.status-done {
+  background: var(--success);
+}
+
+.label-view {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.5rem 0;
+}
+
+.no-labels {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+.view-label-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.625rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: transform 0.15s;
+}
+
+.view-label-chip:hover {
+  transform: translateY(-1px);
+}
+
 .linked-items-list {
   display: flex;
   flex-direction: column;
@@ -404,32 +532,64 @@ function onDueDateChange(e: Event) {
   cursor: pointer;
 }
 
-@media (max-width: 768px) {
-  .label-selector {
-    gap: 0.375rem;
-  }
+.modal-xl {
+  max-width: 90vw;
+  max-height: 90vh;
+  width: 90vw;
+  height: 90vh;
+}
 
-  .label-option {
-    padding: 0.375rem 0.625rem;
-    font-size: 0.8rem;
-  }
+.card-modal {
+  display: flex;
+  flex-direction: column;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
 
-  .linked-item {
-    padding: 0.625rem;
-  }
+.card-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
 
-  .linked-item-remove {
-    opacity: 1;
-    width: 24px;
-    height: 24px;
-  }
+.card-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
 
-  /* Stack the labels/status row on small screens */
-  .form-row {
-    flex-direction: column;
-  }
-  .form-group--small {
-    flex: 1 1 auto;
-  }
+.modal-header {
+  padding: 1rem 1.5rem;
+  margin-bottom: 0;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.modal-actions {
+  padding: 1rem 1.5rem;
+  margin-top: 0;
+  border-top: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+}
+
+.description-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 300px;
+}
+
+.description-group .view-description,
+.description-group .bbcode-editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.description-group .bbcode-editor-container :deep(.bbcode-editor) {
+  flex: 1;
 }
 </style>

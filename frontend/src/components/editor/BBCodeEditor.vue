@@ -95,8 +95,16 @@ const history = ref<string[]>([props.initialContent])
 const historyIndex = ref(0)
 const saveTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
 const isDraggingOverEditor = ref(false)
+const renderTimeout = ref<ReturnType<typeof setTimeout> | null>(null)
+const renderedHtmlCache = ref<string>('')
 
-const renderedHtml = computed(() => bbcodeToHtml(content.value, { paneId: props.paneId }))
+const renderedHtml = computed(() => {
+  // Use cached version if available and not editing
+  if (!isEditing.value && renderedHtmlCache.value) {
+    return renderedHtmlCache.value
+  }
+  return bbcodeToHtml(content.value, { paneId: props.paneId })
+})
 
 const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.value.length - 1)
@@ -117,6 +125,12 @@ function onInput() {
   saveTimeout.value = setTimeout(() => {
     emit('dirty', false)
   }, 1000)
+
+  // Debounce HTML rendering
+  if (renderTimeout.value) clearTimeout(renderTimeout.value)
+  renderTimeout.value = setTimeout(() => {
+    renderedHtmlCache.value = bbcodeToHtml(content.value, { paneId: props.paneId })
+  }, 300)
 }
 
 function onKeyDown(event: KeyboardEvent) {

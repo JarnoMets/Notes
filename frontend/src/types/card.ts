@@ -12,3 +12,17 @@ export interface Card {
   created_at: string
   updated_at: string
 }
+
+export interface CardAttachment {
+  id: string
+  card_id: string
+  filename: string
+  original_filename: string
+  mime_type: string
+  size: number
+  created_at: string
+}
+
+export interface CardWithAttachments extends Card {
+  attachments: CardAttachment[]
+}

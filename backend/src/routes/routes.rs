@@ -35,6 +35,10 @@ pub fn configure_routes(cfg: &mut web::ServiceConfig) {
             .route("/notes/{id}/attachments", web::post().to(routes::attachments::upload_attachment))
             .route("/attachments/{id}", web::get().to(routes::attachments::download_attachment))
             .route("/attachments/{id}", web::delete().to(routes::attachments::delete_attachment))
+            // Card attachments routes
+            .route("/cards/{id}/attachments", web::post().to(routes::attachments::upload_card_attachment))
+            .route("/card-attachments/{id}", web::get().to(routes::attachments::download_card_attachment))
+            .route("/card-attachments/{id}", web::delete().to(routes::attachments::delete_card_attachment))
             // Boards routes
             .route("/boards", web::get().to(routes::boards::get_boards))
             .route("/boards", web::post().to(routes::boards::create_board))
