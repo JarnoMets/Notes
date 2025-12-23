@@ -257,10 +257,10 @@ export const useExplorerStore = defineStore('explorer', () => {
   
   // Fetch all data
   async function fetchAll() {
-    await Promise.all([fetchNotes(), fetchBoards()])
+    await Promise.all([fetchNotesTree(), fetchBoardsTree()])
   }
   
-  async function fetchNotes() {
+  async function fetchNotesTree() {
     try {
       const response = await notesApi.getTree()
       folders.value = response.data.folders
@@ -270,7 +270,7 @@ export const useExplorerStore = defineStore('explorer', () => {
     }
   }
   
-  async function fetchBoards() {
+  async function fetchBoardsTree() {
     try {
       const response = await boardsApi.getTree()
       boardFolders.value = response.data.folders || []
@@ -699,8 +699,8 @@ export const useExplorerStore = defineStore('explorer', () => {
     
     // Actions
     fetchAll,
-    fetchNotes,
-    fetchBoards,
+    fetchNotesTree,
+    fetchBoardsTree,
     toggleFolder,
     toggleBoardFolder,
     toggleSection,

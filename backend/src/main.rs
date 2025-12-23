@@ -46,14 +46,15 @@ async fn main() -> std::io::Result<()> {
         google_client_id,
         google_client_secret,
         app_url,
+        cache: Arc::new(crate::models::Cache::new()),
     });
 
     // Spawn background task to run interval-based automations
     {
         let db_clone = app_state.db.clone();
         tokio::spawn(async move {
-            // Polling loop: every 30 seconds check for due interval automations
-            let poll_interval = std::time::Duration::from_secs(30);
+            // Polling loop: every 5 minutes check for due interval automations (reduced frequency)
+            let poll_interval = std::time::Duration::from_secs(300); // 5 minutes
             loop {
                 match db_clone.run_due_interval_automations().await {
                     Ok(_) => {

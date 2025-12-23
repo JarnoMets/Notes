@@ -364,12 +364,12 @@ function openRootContextMenu(event: MouseEvent) {
       items.push({ label: 'New Note', action: () => emit('create-note', getTargetFolderId()) })
       items.push({ label: 'New Folder', action: () => emit('create-folder', getTargetFolderId()) })
       items.push({ divider: true })
-      items.push({ label: 'Refresh', action: () => explorerStore.fetchNotes() })
+      items.push({ label: 'Refresh', action: () => explorerStore.fetchNotesTree() })
     } else {
       items.push({ label: 'New Board', action: () => emit('create-board', getTargetBoardFolderId()) })
       items.push({ label: 'New Folder', action: () => emit('create-board-folder', getTargetBoardFolderId()) })
       items.push({ divider: true })
-      items.push({ label: 'Refresh', action: () => explorerStore.fetchBoards() })
+      items.push({ label: 'Refresh', action: () => explorerStore.fetchBoardsTree() })
     }
 
     openFloatingMenu(items, event.clientX, event.clientY)
@@ -600,9 +600,9 @@ async function handleMoveItem(data: MoveItemData) {
     
     // Refresh to get updated positions
     if (itemType === 'note' || itemType === 'folder') {
-      await explorerStore.fetchNotes()
+      await explorerStore.fetchNotesTree()
     } else {
-      await explorerStore.fetchBoards()
+      await explorerStore.fetchBoardsTree()
     }
   } catch (error) {
     logger.error('Failed to move item:', error)

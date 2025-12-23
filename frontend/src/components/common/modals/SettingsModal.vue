@@ -73,7 +73,7 @@
 
     <!-- Add/Edit Calendar Modal -->
     <div v-if="calendarModalOpen" class="modal-overlay" @click.self="closeCalendarModal">
-      <div class="modal-container small">
+      <div class="modal modal-container small">
         <div class="modal-header">
           <h2>{{ editingCalendar ? 'Edit Calendar' : 'Add ICS Calendar' }}</h2>
           <button class="modal-close" @click="closeCalendarModal">

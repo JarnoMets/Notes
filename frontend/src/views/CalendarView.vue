@@ -751,7 +751,7 @@ function nextPeriod() {
 function goToToday() {
   const today = new Date()
   currentDate.value = today
-  selectedDate.value = today.toISOString().split('T')[0]
+  selectedDate.value = dateToString(today)
 }
 
 function toggleBoard(boardId: string) {

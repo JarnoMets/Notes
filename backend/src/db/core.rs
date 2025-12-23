@@ -77,7 +77,7 @@ impl Database {
 
         // Now connect to the actual database
         let pool = PgPoolOptions::new()
-            .max_connections(5)
+            .max_connections(20)
             .connect(database_url)
             .await?;
 
@@ -375,6 +375,21 @@ impl Database {
         .execute(pool)
         .await;
 
+        // Card attachments table
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS card_attachments (
+                id TEXT PRIMARY KEY,
+                card_id TEXT NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+                filename TEXT NOT NULL,
+                original_filename TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                size BIGINT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )",
+        )
+        .execute(pool)
+        .await?;
+
         // Add archived column to lists if not exists
         let _ = sqlx::query(
             "ALTER TABLE lists ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE"
@@ -484,6 +499,10 @@ impl Database {
             .await;
 
         let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_note_attachments_note ON note_attachments(note_id)")
+            .execute(pool)
+            .await;
+
+        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_card_attachments_card ON card_attachments(card_id)")
             .execute(pool)
             .await;
 

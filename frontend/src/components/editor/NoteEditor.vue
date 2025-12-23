@@ -123,6 +123,7 @@ const isEditingTitle = ref(false)
 const showAttachments = ref(false)
 const isDirty = ref(false)
 const previousContent = ref<string>('')
+const saveTimeout = ref<NodeJS.Timeout | null>(null)
 
 // Delete note confirmation
 const deleteNoteModal = ref({
@@ -194,14 +195,25 @@ function handleContentUpdate(newContent: string) {
   
   previousContent.value = newContent
   note.value.content = newContent
-  saveNote()
+  isDirty.value = true
+  emit('dirty', true)
+  
+  // Debounce save
+  if (saveTimeout.value) clearTimeout(saveTimeout.value)
+  saveTimeout.value = setTimeout(() => {
+    saveNote()
+  }, 1000)
 }
 
 async function saveNote() {
   if (!note.value) return
-  await notesStore.updateNote(note.value.id, { content: note.value.content })
-  isDirty.value = false
-  emit('dirty', false)
+  try {
+    await notesStore.updateNote(note.value.id, { content: note.value.content })
+    isDirty.value = false
+    emit('dirty', false)
+  } catch (error) {
+    console.error('Failed to save note:', error)
+  }
 }
 
 async function duplicateNote() {
