@@ -1,10 +1,10 @@
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="modal-overlay" @click.self="close">
-      <div class="modal-container">
+      <div class="modal modal-large">
         <div class="modal-header">
           <h2>Settings</h2>
-          <button class="close-btn" @click="close">
+          <button class="modal-close" @click="close">
             <Icon name="x" />
           </button>
         </div>
@@ -28,7 +28,7 @@
           <section class="settings-section">
             <div class="section-header">
               <h3>ICS Calendars</h3>
-              <button class="add-btn" @click="openCalendarModal()">
+              <button class="btn btn-primary" @click="openCalendarModal()">
                 <Icon name="plus" />
                 Add Calendar
               </button>
@@ -58,11 +58,11 @@
                   />
                   <span class="toggle-slider"></span>
                 </label>
-                <button class="icon-btn" @click="openCalendarModal(calendar)" title="Edit">
-                  <Icon name="edit-2" />
+                <button class="btn-icon" @click="openCalendarModal(calendar)" title="Edit">
+                  <Icon name="edit" />
                 </button>
-                <button class="icon-btn danger" @click="confirmDeleteCalendar(calendar)" title="Delete">
-                  <Icon name="trash-2" />
+                <button class="btn-icon" @click="confirmDeleteCalendar(calendar)" title="Delete">
+                  <Icon name="trash" />
                 </button>
               </div>
             </div>
@@ -76,7 +76,7 @@
       <div class="modal-container small">
         <div class="modal-header">
           <h2>{{ editingCalendar ? 'Edit Calendar' : 'Add ICS Calendar' }}</h2>
-          <button class="close-btn" @click="closeCalendarModal">
+          <button class="modal-close" @click="closeCalendarModal">
             <Icon name="x" />
           </button>
         </div>
@@ -116,9 +116,9 @@
         </div>
 
         <div class="modal-footer">
-          <button class="btn secondary" @click="closeCalendarModal">Cancel</button>
+          <button class="btn btn-secondary" @click="closeCalendarModal">Cancel</button>
           <button 
-            class="btn primary" 
+            class="btn btn-primary" 
             @click="saveCalendar"
             :disabled="!calendarForm.name || !calendarForm.url"
           >
@@ -243,61 +243,24 @@ function deleteCalendar() {
 
 <style scoped>
 .modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
 }
 
 .modal-container {
-  background: var(--bg-secondary, #1e1e1e);
-  border-radius: 12px;
   width: 90%;
   max-width: 600px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--border-primary, #3c3c3c);
 }
 
 .modal-container.small {
   max-width: 450px;
 }
 
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border-primary);
-}
-
 .modal-header h2 {
-  margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-btn:hover {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
 }
 
 .modal-body {
@@ -360,24 +323,6 @@ function deleteCalendar() {
   width: 18px;
   height: 18px;
   accent-color: var(--accent);
-}
-
-.add-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  background: var(--accent);
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.add-btn:hover {
-  background: var(--accent-hover);
 }
 
 .empty-state {
@@ -483,27 +428,6 @@ function deleteCalendar() {
   transform: translateX(18px);
 }
 
-.icon-btn {
-  background: none;
-  border: none;
-  padding: 0.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.icon-btn:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.icon-btn.danger:hover {
-  color: #e74c3c;
-}
-
 /* Form styles */
 .form-group {
   margin-bottom: 1rem;
@@ -556,39 +480,5 @@ function deleteCalendar() {
 
 .color-option.active {
   border-color: var(--text-primary);
-}
-
-/* Buttons */
-.btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
-  font-size: 0.875rem;
-  transition: background 0.2s;
-}
-
-.btn.primary {
-  background: var(--accent);
-  color: white;
-}
-
-.btn.primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-}
-
-.btn.primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn.secondary {
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-}
-
-.btn.secondary:hover {
-  background: var(--bg-hover);
 }
 </style>

@@ -1,9 +1,9 @@
 <template>
   <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
-    <div class="modal-content" @click.stop>
+    <div class="modal" @click.stop>
       <div class="modal-header">
         <h3>{{ title }}</h3>
-        <button @click="$emit('close')" class="close-button">&times;</button>
+        <button @click="$emit('close')" class="modal-close">&times;</button>
       </div>
       <div class="modal-body">
         <form @submit.prevent="handleSubmit">
@@ -39,8 +39,8 @@
             </select>
           </div>
           <div class="modal-actions">
-            <button type="button" @click="$emit('close')" class="cancel-button">Cancel</button>
-            <button type="submit" class="submit-button">{{ submitLabel }}</button>
+            <button type="button" @click="$emit('close')" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">{{ submitLabel }}</button>
           </div>
         </form>
       </div>
@@ -98,60 +98,6 @@ function handleSubmit() {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: var(--bg-color);
-  border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.modal-header h3 {
-  margin: 0;
-  color: var(--text-color);
-}
-
-.close-button {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-color);
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.modal-body {
-  padding: 1rem;
-}
-
 .form-field {
   margin-bottom: 1rem;
 }
@@ -159,7 +105,7 @@ function handleSubmit() {
 .form-field label {
   display: block;
   margin-bottom: 0.5rem;
-  color: var(--text-color);
+  color: var(--text-primary);
   font-weight: 500;
 }
 
@@ -168,49 +114,15 @@ function handleSubmit() {
 .form-select {
   width: 100%;
   padding: 0.5rem;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--border-primary);
   border-radius: 4px;
-  background: var(--input-bg);
-  color: var(--text-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   font-family: inherit;
 }
 
 .form-textarea {
   min-height: 100px;
   resize: vertical;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.cancel-button,
-.submit-button {
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.cancel-button {
-  background: var(--button-secondary-bg);
-  color: var(--button-secondary-text);
-}
-
-.submit-button {
-  background: var(--button-primary-bg);
-  color: var(--button-primary-text);
-}
-
-.cancel-button:hover {
-  background: var(--button-secondary-hover-bg);
-}
-
-.submit-button:hover {
-  background: var(--button-primary-hover-bg);
 }
 </style>
