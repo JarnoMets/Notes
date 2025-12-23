@@ -47,6 +47,12 @@
         :style="item.color ? { color: item.color } : {}"
       />
       <Icon
+        v-else-if="item.type === 'graph'"
+        name="share-2"
+        :size="14"
+        class="node-icon graph-icon"
+      />
+      <Icon
         v-else
         name="file"
         :size="14"
@@ -92,6 +98,8 @@
         @toggle="$emit('toggle', $event)"
         @dblclick="$emit('dblclick', $event)"
         @create-note="$emit('create-note', $event)"
+        @create-board="$emit('create-board', $event)"
+        @create-graph="$emit('create-graph', $event)"
         @create-folder="$emit('create-folder', $event)"
         @rename="$emit('rename', $event)"
         @delete="$emit('delete', $event)"
@@ -122,6 +130,8 @@ const emit = defineEmits<{
   (e: 'toggle', item: ExplorerItem): void;
   (e: 'dblclick', item: ExplorerItem): void;
   (e: 'create-note', folderId: string | null): void;
+  (e: 'create-board', folderId: string | null): void;
+  (e: 'create-graph', folderId: string | null): void;
   (e: 'create-folder', parentId: string | null): void;
   (e: 'rename', item: ExplorerItem): void;
   (e: 'delete', item: ExplorerItem): void;
@@ -138,9 +148,9 @@ interface MoveItemData {
 }
 
 const depth = computed(() => props.depth ?? 0);
-const isFolder = computed(() => props.item.type === 'folder' || props.item.type === 'board-folder');
+const isFolder = computed(() => props.item.type === 'folder' || props.item.type === 'board-folder' || props.item.type === 'graph-folder');
 const isSelected = computed(() => props.selectedId === props.item.id);
-const canBeFavorited = computed(() => props.item.type === 'note' || props.item.type === 'folder' || props.item.type === 'board' || props.item.type === 'board-folder');
+const canBeFavorited = computed(() => props.item.type === 'note' || props.item.type === 'folder' || props.item.type === 'board' || props.item.type === 'board-folder' || props.item.type === 'graph' || props.item.type === 'graph-folder');
 const canBeUrgent = computed(() => props.item.type !== 'favorites-folder');
 
 const isDropTarget = ref(false);
@@ -168,7 +178,11 @@ function handleContextMenu(event: MouseEvent) {
       if (props.item.type === 'folder') {
         menuItems.push({ label: 'New Note', action: () => emit('create-note', props.item.id) })
         menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) })
-      } else {
+      } else if (props.item.type === 'board-folder') {
+        menuItems.push({ label: 'New Board', action: () => emit('create-board', props.item.id) })
+        menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) })
+      } else if (props.item.type === 'graph-folder') {
+        menuItems.push({ label: 'New Graph', action: () => emit('create-graph', props.item.id) })
         menuItems.push({ label: 'New Folder', action: () => emit('create-folder', props.item.id) })
       }
       menuItems.push({ divider: true })

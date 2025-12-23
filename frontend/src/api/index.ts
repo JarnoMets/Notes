@@ -9,5 +9,6 @@ export { labelsApi } from './labels'
 export { automationsApi } from './automations'
 export { settingsApi } from './settings'
 export { remindersApi } from './reminders'
+export { graphsApi, graphFoldersApi, graphNodesApi, graphEdgesApi } from './graphs'
 
 export default api

@@ -5,37 +5,21 @@ import { useAuthStore } from '../stores/auth'
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
-    redirect: '/notes'
-  },
-  {
-    path: '/login',
-    name: 'login',
-    component: () => import('../views/LoginView.vue'),
-    meta: { guest: true }
-  },
-  {
-    path: '/register',
-    name: 'register',
-    component: () => import('../views/RegisterView.vue'),
-    meta: { guest: true }
-  },
-  {
-    path: '/auth/google/callback',
-    name: 'google-callback',
-    component: () => import('../views/GoogleCallbackView.vue'),
-    meta: { guest: true }
+    name: 'home',
+    component: () => import('../views/MainLayout.vue'),
+    meta: { requiresAuth: true }
   },
   {
     path: '/notes',
-    name: 'notes',
-    component: () => import('../views/NotesWorkspace.vue'),
-    meta: { requiresAuth: true }
+    redirect: '/'
+  },
+  {
+    path: '/graphs',
+    redirect: '/'
   },
   {
     path: '/boards',
-    name: 'boards',
-    component: () => import('../views/BoardsWorkspace.vue'),
-    meta: { requiresAuth: true }
+    redirect: '/'
   },
   {
     path: '/calendar',
@@ -57,7 +41,7 @@ router.beforeEach((to, _from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.meta.guest && authStore.isAuthenticated) {
-    next('/notes')
+    next('/')
   } else {
     next()
   }
