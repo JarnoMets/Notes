@@ -24,7 +24,6 @@
         @select="handleExplorerSelect"
         @create-note="handleCreateNote"
         @create-folder="handleCreateFolder"
-        @create-board="openCreateBoardModal"
         @create-board-folder="handleCreateBoardFolder"
         @rename="handleRename"
         @delete="handleExplorerDelete"
@@ -37,7 +36,6 @@
     <!-- Resize Handle -->
     <ResizeHandle
       direction="vertical"
-      @resize-start="startSidebarResize"
     />
 
     <!-- Main Content -->
@@ -46,181 +44,48 @@
       @dragover="onBoardContentDragOver"
       @dragleave="onBoardContentDragLeave"
       @drop="onBoardContentDrop"
-      @contextmenu.prevent="openBoardContextMenu($event)"
       :class="{ 'drag-over': boardContentDragOver }"
     >
       <!-- Board Header -->
-      <div class="board-header" v-if="currentBoard">
-        <div class="header-left">
-          <h2 :style="{ color: currentBoard.board.color || 'var(--text-primary)' }">
-            {{ currentBoard.board.name }}
-          </h2>
-          <span class="board-description" v-if="currentBoard.board.description">
-            {{ currentBoard.board.description }}
-          </span>
-        </div>
-        <div class="header-actions">
-          <button class="btn-icon" :class="{ active: hasActiveFilters }" @click="showFiltersPanel = !showFiltersPanel" title="Filters">
-            <Icon name="filter" :size="16" />
-          </button>
-          <button class="btn-icon" @click="showLabelsPanel = true" title="Labels">
-            <Icon name="tag" :size="16" />
-          </button>
-          <button class="btn-icon" @click="showAutomationsPanel = true" title="Automations">
-            <Icon name="play" :size="16" />
-          </button>
-          <button class="btn-icon" @click="openArchivePanel" title="Archive">
-            <Icon name="archive" :size="16" />
-          </button>
-          <button class="btn-icon" @click="openEditBoardModal" title="Edit Board">
-            <Icon name="edit" :size="16" />
-          </button>
-          <div class="menu-wrapper" ref="menuWrapper">
-            <button class="btn-icon" @click="toggleBoardMenu" title="More options">
-              <Icon name="more-vertical" :size="16" :fill="true" />
-            </button>
-            <div v-if="showBoardMenu" class="dropdown-menu">
-              <button @click="openAddListModal">
-                <Icon name="plus" :size="14" /> Add List
-              </button>
-              <div class="menu-divider"></div>
-              <button class="danger" @click="confirmDeleteBoard">
-                <Icon name="trash" :size="14" /> Delete Board
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <BoardHeader
+        :board="currentBoard?.board || null"
+        :has-active-filters="hasActiveFilters"
+        @toggle-filters="showFiltersPanel = !showFiltersPanel"
+        @open-labels="showLabelsPanel = true"
+        @open-automations="showAutomationsPanel = true"
+        @open-archive="openArchivePanel"
+        @add-list="openAddListModal"
+        @delete-board="confirmDeleteBoard"
+      />
 
       <!-- Filters Bar -->
-      <div v-if="showFiltersPanel && currentBoard" class="filters-bar">
-        <div class="filter-group">
-          <label>Labels:</label>
-          <div class="filter-labels">
-            <button 
-              v-for="label in currentBoard.labels" 
-              :key="label.id" 
-              class="filter-label"
-              :class="{ selected: selectedLabelFilters.includes(label.id) }"
-              :style="{ backgroundColor: selectedLabelFilters.includes(label.id) ? label.color : 'transparent', borderColor: label.color }"
-              @click="toggleLabelFilter(label.id)"
-            >
-              {{ label.name }}
-            </button>
-          </div>
-        </div>
-        <div class="filter-group">
-          <label>Due Date:</label>
-          <select v-model="dueDateFilter">
-            <option value="">All</option>
-            <option value="overdue">Overdue</option>
-            <option value="today">Due Today</option>
-            <option value="week">Due This Week</option>
-            <option value="none">No Due Date</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Hide Done:</label>
-          <input type="checkbox" v-model="hideDoneCards" />
-        </div>
-        <button class="btn btn-secondary btn-sm" @click="clearFilters">Clear Filters</button>
-      </div>
+      <BoardFilters
+        :show-filters-panel="showFiltersPanel"
+        :current-board="currentBoard"
+        :selected-label-filters="selectedLabelFilters"
+        :due-date-filter="dueDateFilter"
+        :hide-done-cards="hideDoneCards"
+        @toggle-label-filter="toggleLabelFilter"
+        @update:due-date-filter="dueDateFilter = $event"
+        @update:hide-done-cards="hideDoneCards = $event"
+        @clear-filters="clearFilters"
+      />
 
-      <!-- Kanban Board -->
-      <div class="kanban-container" v-if="currentBoard">
-        <div class="lists-row" style="display: flex; align-items: flex-start; gap: 12px;">
-          <Draggable v-model="activeLists" item-key="list.id" class="lists-wrapper" @end="onListsDragEnd" :animation="150" :handle="'.list-drag-handle'">
-          <template #item="{ element: listWithCards }">
-            <div 
-              :key="listWithCards.list.id" 
-              class="kanban-list"
-              @dragover.prevent="onListDragOver($event, listWithCards.list.id)"
-              @drop="onCardDrop($event, listWithCards.list.id)"
-            >
-            <div class="list-header" @contextmenu.prevent="openListContextMenu($event, listWithCards.list)">
-              <button class="list-drag-handle" type="button" @click.stop title="Drag to reorder">
-                <Icon name="menu" :size="14" />
-              </button>
-              <h3>{{ listWithCards.list.name }}</h3>
-              <span class="card-count">{{ getFilteredCards(listWithCards.cards).length }}</span>
-              <button class="list-menu-btn" @click="archiveList(listWithCards.list.id)" title="Archive List">
-                <Icon name="archive" :size="14" />
-              </button>
-              <button class="list-menu-btn" @click="confirmDeleteList(listWithCards.list.id)" title="Delete List">
-                <Icon name="x" :size="14" />
-              </button>
-            </div>
-            
-            <div class="cards-container">
-              <div 
-                v-for="(card, index) in getFilteredCards(listWithCards.cards)" 
-                :key="card.id" 
-                class="kanban-card"
-                :class="{ 
-                  'drag-over': dragOverCard === card.id,
-                  'note-drop-target': noteDropTargetCardId === card.id
-                }"
-                draggable="true"
-                @dragstart="onCardDragStart($event, card, listWithCards.list.id)"
-                @dragend="onCardDragEnd"
-                @dragover.prevent="onCardDragOver($event, card.id, index, listWithCards.list.id)"
-                @dragleave="onCardDragLeave"
-                @drop.stop="onCardDropOnCard($event, card.id, index, listWithCards.list.id)"
-                @click="openCardModal(card)"
-                @contextmenu.prevent="openCardContextMenu($event, card, listWithCards.list.id)"
-              >
-                <!-- Done marker (top-right badge) -->
-                <span v-if="card.status === 'done'" class="card-done-badge">Done</span>
-
-                <!-- Clicking the card opens the edit modal; edit button removed -->
-                
-                <!-- Note link indicator -->
-                <div v-if="hasNoteLinks(card.description)" class="card-links">
-                  <span class="link-indicator" title="Has linked notes">
-                    <Icon name="link" :size="12" />
-                  </span>
-                </div>
-                <div class="card-labels" v-if="card.labels.length > 0">
-                  <span 
-                    v-for="labelId in card.labels" 
-                    :key="labelId" 
-                    class="label"
-                    :style="{ backgroundColor: getLabelColor(labelId) }"
-                  >{{ getLabelName(labelId) }}</span>
-                </div>
-                <h4>
-                  {{ card.title }}
-                </h4>
-                <p v-if="card.description" class="card-description">{{ getPreview(card.description) }}</p>
-                <div class="card-footer" v-if="card.due_date">
-                  <span class="due-date" :class="{ overdue: isOverdue(card) }">
-                    <Icon name="calendar" :size="12" /> {{ formatDate(card.due_date) }}
-                  </span>
-                </div>
-              </div>
-              
-              <!-- Drop zone at end of list -->
-              <div 
-                class="card-drop-zone"
-                :class="{ 'active': dropZoneListId === listWithCards.list.id }"
-                @dragover.prevent
-                @drop="onCardDropAtEnd($event, listWithCards.list.id)"
-              ></div>
-            </div>
-
-            <button class="add-card-btn" @click="openAddCardModal(listWithCards.list.id)">
-              <Icon name="plus" :size="14" /> Add Card
-            </button>
-            </div>
-          </template>
-          </Draggable>
-
-          <!-- Add List Button (placed to the right of lists) -->
-          <div class="kanban-list add-list-placeholder" @click="openAddListModal">
-            <Icon name="plus" :size="16" />
-            <span>Add List</span>
-          </div>
-        </div>
+      <div v-if="currentBoard">
+        <KanbanBoard
+          v-model:lists="activeLists"
+          :labels="currentBoard?.labels || []"
+          :selected-label-filters="selectedLabelFilters"
+          :due-date-filter="dueDateFilter"
+          :hide-done-cards="hideDoneCards"
+          @lists-drag-end="onListsDragEnd"
+          @open-card="openCardModal"
+          @add-card="openAddCardModal"
+          @add-list="openAddListModal"
+          @archive-list="archiveList"
+          @delete-list="confirmDeleteList"
+          @move-card="handleMoveCard"
+        />
       </div>
 
       <!-- Empty State -->
@@ -229,79 +94,13 @@
           <Icon name="board" :size="48" />
           <h3>No Board Selected</h3>
           <p>Select a board from the sidebar or create a new one</p>
-          <button class="btn btn-primary" @click="openCreateBoardModal">
-            <Icon name="plus" :size="16" /> Create Board
-          </button>
         </div>
       </div>
     </div>
 
-    <!-- Context Menu -->
-    <div 
-      v-if="contextMenu.visible"
-      class="context-menu"
-      :style="{ left: contextMenu.x + 'px', top: contextMenu.y + 'px' }"
-      @click.stop
-    >
-      <div class="context-menu-item" @click="handleContextAction('edit')">
-        <Icon name="edit" :size="14" /> Edit
-      </div>
-      <div class="context-menu-divider"></div>
-      <div class="context-menu-item danger" @click="handleContextAction('delete')">
-        <Icon name="trash" :size="14" /> Delete
-      </div>
-    </div>
 
-    <!-- Create/Edit Board Modal -->
-    <div v-if="boardModal.visible" class="modal-overlay" @click.self="closeBoardModal">
-      <div class="modal">
-        <div class="modal-header">
-          <h3>{{ boardModal.isEdit ? 'Edit Board' : 'New Board' }}</h3>
-          <button class="modal-close" @click="closeBoardModal">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <form @submit.prevent="saveBoardModal">
-          <div class="form-group">
-            <label for="boardName">Name</label>
-            <input 
-              id="boardName" 
-              v-model="boardModal.name" 
-              type="text" 
-              required 
-              placeholder="Board name"
-            />
-          </div>
-          <div class="form-group">
-            <label for="boardDescription">Description (optional)</label>
-            <textarea 
-              id="boardDescription" 
-              v-model="boardModal.description" 
-              rows="3" 
-              placeholder="What's this board for?"
-            ></textarea>
-          </div>
-          <div class="form-group">
-            <label>Color</label>
-            <div class="color-picker">
-              <button 
-                v-for="color in colorPalette" 
-                :key="color"
-                type="button"
-                class="color-option"
-                :class="{ selected: boardModal.color === color }"
-                :style="{ backgroundColor: color }"
-                @click="boardModal.color = color"
-              ></button>
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn btn-secondary" @click="closeBoardModal">Cancel</button>
-            <button type="submit" class="btn btn-primary">{{ boardModal.isEdit ? 'Save' : 'Create' }}</button>
-          </div>
-        </form>
-      </div>
-    </div>
+
+
 
     <!-- Add List Modal -->
     <div v-if="showAddListModal" class="modal-overlay" @click.self="showAddListModal = false">
@@ -391,201 +190,36 @@
     />
 
     <!-- Labels Management Panel -->
-    <div v-if="showLabelsPanel" class="side-panel-overlay" @click.self="showLabelsPanel = false">
-      <div class="side-panel">
-        <div class="side-panel-header">
-          <h3>Labels</h3>
-          <button class="modal-close" @click="showLabelsPanel = false">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <div class="side-panel-content">
-          <div class="labels-list-manage">
-            <div 
-              v-for="label in currentBoard?.labels" 
-              :key="label.id" 
-              class="label-item"
-            >
-              <div class="label-preview" :style="{ backgroundColor: label.color }">
-                {{ label.name }}
-              </div>
-              <div class="label-actions">
-                <button class="btn btn-sm" @click="editLabel(label)"><Icon name="edit" :size="12" /></button>
-                <button class="btn btn-sm btn-danger" @click="deleteLabelById(label.id)"><Icon name="trash" :size="12" /></button>
-              </div>
-            </div>
-          </div>
-          <div class="create-label-form">
-            <h4>Create Label</h4>
-            <input v-model="newLabelName" placeholder="Label name" />
-            <div class="color-picker">
-              <button 
-                v-for="color in labelColorPalette" 
-                :key="color"
-                type="button"
-                class="color-option"
-                :class="{ selected: newLabelColor === color }"
-                :style="{ backgroundColor: color }"
-                @click="newLabelColor = color"
-              ></button>
-            </div>
-            <button class="btn btn-primary" @click="createLabel" :disabled="!newLabelName.trim()">Create</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <LabelsPanel
+      :visible="showLabelsPanel"
+      :labels="currentBoard?.labels || []"
+      @close="showLabelsPanel = false"
+      @edit="handleEditLabel"
+      @delete="deleteLabelById"
+      @create="handleCreateLabel"
+    />
 
     <!-- Archive Panel -->
-    <div v-if="showArchivePanel" class="side-panel-overlay" @click.self="showArchivePanel = false">
-      <div class="side-panel">
-        <div class="side-panel-header">
-          <h3>Archived Items</h3>
-          <button class="modal-close" @click="showArchivePanel = false">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <div class="side-panel-content">
-          <div class="archive-section">
-            <h4>Archived Lists</h4>
-            <div v-if="archivedLists.length === 0" class="empty-state">No archived lists</div>
-            <div v-for="list in archivedLists" :key="list.id" class="archived-item">
-              <span>{{ list.name }}</span>
-              <button class="btn btn-sm" @click="restoreList(list.id)">Restore</button>
-            </div>
-          </div>
-          <div class="archive-section">
-            <h4>Archived Cards</h4>
-            <div v-if="archivedCards.length === 0" class="empty-state">No archived cards</div>
-            <div v-for="card in archivedCards" :key="card.id" class="archived-item">
-              <span>{{ card.title }}</span>
-              <button class="btn btn-sm" @click="restoreCard(card.id)">Restore</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ArchivePanel
+      :visible="showArchivePanel"
+      :archived-lists="archivedLists"
+      :archived-cards="archivedCards"
+      @close="showArchivePanel = false"
+      @restore-list="restoreList"
+      @restore-card="restoreCard"
+    />
 
     <!-- Automations Panel -->
-    <div v-if="showAutomationsPanel" class="side-panel-overlay" @click.self="showAutomationsPanel = false">
-      <div class="side-panel side-panel-wide">
-        <div class="side-panel-header">
-          <h3>Automations</h3>
-          <button class="modal-close" @click="showAutomationsPanel = false">
-            <Icon name="x" :size="14" />
-          </button>
-        </div>
-        <div class="side-panel-content">
-          <div class="automations-list">
-            <div 
-              v-for="automation in currentBoard?.automations" 
-              :key="automation.id" 
-              class="automation-item"
-              :class="{ disabled: !automation.enabled }"
-            >
-              <div class="automation-info">
-                <div class="automation-name">{{ automation.name }}</div>
-                <div class="automation-description">
-                  <div title="{{ getTriggerDescription(automation.trigger_type) }}">
-                    When <strong>{{ getTriggerLabel(automation.trigger_type) }}</strong>
-                  </div>
-                  <div title="{{ getActionDescription(automation.action_type) }}">
-                    → <strong>{{ getActionLabel(automation.action_type) }}</strong>
-                  </div>
-                  <div class="automation-hint">{{ getTriggerDescription(automation.trigger_type) }} {{ getActionDescription(automation.action_type) }}</div>
-                </div>
-              </div>
-              <div class="automation-actions">
-                <button class="btn btn-sm" @click="toggleAutomation(automation.id)">
-                  {{ automation.enabled ? 'Disable' : 'Enable' }}
-                </button>
-                <button class="btn btn-sm btn-danger" @click="deleteAutomation(automation.id)">
-                  <Icon name="trash" :size="12" />
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="create-automation-form">
-            <h4>Create Flow</h4>
-            <div class="form-group">
-              <label>Name</label>
-              <input v-model="newAutomation.name" placeholder="e.g., Move to Done when complete" />
-            </div>
-            <div class="form-group">
-              <label>When...</label>
-              <select v-model="newAutomation.trigger_type">
-                <option value="card_moved">Card is moved to a list</option>
-                <option value="due_date_passed">Due date passes</option>
-                <option value="label_added">Label is added</option>
-                <option value="card_created">Card is created</option>
-                <option value="interval">Interval (periodic)</option>
-              </select>
-              <div v-if="newAutomation.trigger_type === 'interval'" class="trigger-config">
-                <label>Interval (minutes)</label>
-                <input type="number" min="1" v-model.number="intervalMinutes" />
-              </div>
-              <div v-if="newAutomation.trigger_type === 'card_moved'" class="trigger-config">
-                <select v-model="newAutomation.trigger_config.target_list_id">
-                  <option value="">Select list...</option>
-                  <option v-for="lwc in currentBoard?.lists" :key="lwc.list.id" :value="lwc.list.id">
-                    {{ lwc.list.name }}
-                  </option>
-                </select>
-              </div>
-              <div v-if="newAutomation.trigger_type === 'label_added'" class="trigger-config">
-                <select v-model="newAutomation.trigger_config.label_id">
-                  <option value="">Select label...</option>
-                  <option v-for="label in currentBoard?.labels" :key="label.id" :value="label.id">
-                    {{ label.name }}
-                  </option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Then...</label>
-              <select v-model="newAutomation.action_type">
-                <option value="move_to_list">Move card to list</option>
-                <option value="add_label">Add label</option>
-                <option value="remove_label">Remove label</option>
-                <option value="set_status">Set status</option>
-                <option value="archive_card">Archive card</option>
-              </select>
-              <div v-if="newAutomation.action_type === 'move_to_list'" class="action-config">
-                <select v-model="newAutomation.action_config.target_list_id">
-                  <option value="">Select list...</option>
-                  <option v-for="lwc in currentBoard?.lists" :key="lwc.list.id" :value="lwc.list.id">
-                    {{ lwc.list.name }}
-                  </option>
-                </select>
-              </div>
-              <div v-if="newAutomation.action_type === 'add_label' || newAutomation.action_type === 'remove_label'" class="action-config">
-                <select v-model="newAutomation.action_config.label_id">
-                  <option value="">Select label...</option>
-                  <option v-for="label in currentBoard?.labels" :key="label.id" :value="label.id">
-                    {{ label.name }}
-                  </option>
-                </select>
-              </div>
-              <div v-if="newAutomation.action_type === 'set_status'" class="action-config">
-                <select v-model="newAutomation.action_config.status">
-                  <option value="">Select status...</option>
-                  <option value="done">Done</option>
-                  <option value="open">Open</option>
-                </select>
-              </div>
-              <div class="automation-preview" v-if="newAutomation.action_type && newAutomation.trigger_type">
-                <div class="preview-row" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                  <span class="preview-badge preview-trigger">{{ newAutomationTriggerPreview }}</span>
-                  <span class="muted">→</span>
-                  <span class="preview-badge preview-action">{{ newAutomationActionPreview }}</span>
-                </div>
-                <div class="automation-preview-hint">{{ getTriggerDescription(newAutomation.trigger_type) }} {{ getActionDescription(newAutomation.action_type) }}</div>
-              </div>
-            </div>
-            <button class="btn btn-primary" @click="createAutomation" :disabled="!isAutomationValid">Create Flow</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <AutomationsPanel
+      :visible="showAutomationsPanel"
+      :automations="currentBoard?.automations || []"
+      :lists="currentBoard?.lists || []"
+      :labels="currentBoard?.labels || []"
+      @close="showAutomationsPanel = false"
+      @create="handleAutomationCreate"
+      @toggle="handleAutomationToggle"
+      @delete="handleAutomationDelete"
+    />
 
     <!-- Confirmation Modals -->
     <ConfirmModal
@@ -641,22 +275,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { boardsApi, listsApi, cardsApi, labelsApi, automationsApi } from '../api'
 import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
 import { useNotesStore } from '../stores/notes'
-import type { Board, BoardWithLists, Card, List, BoardLabel } from '../types'
+import type { BoardWithLists, Card, BoardLabel } from '../types'
 import { WorkspaceSidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle } from '../components/workspace'
-import Draggable from 'vuedraggable'
 import ExplorerTree from '../components/common/ui/ExplorerTree.vue'
 import Icon from '../components/common/ui/Icon.vue'
 import ConfirmModal from '../components/common/modals/ConfirmModal.vue'
 import PromptModal from '../components/common/modals/PromptModal.vue'
 import CardEditModal from '../components/boards/CardEditModal.vue'
+import { KanbanBoard } from '../components/boards'
+import BoardHeader from '../components/boards/BoardHeader.vue'
+import BoardFilters from '../components/boards/BoardFilters.vue'
+import LabelsPanel from '../components/boards/LabelsPanel.vue'
+import ArchivePanel from '../components/boards/ArchivePanel.vue'
+import AutomationsPanel from '../components/boards/AutomationsPanel.vue'
 import { toApiIso, normalizeForInput } from '../utils/dates'
 import logger from '@/utils/logger'
-import { openFloatingMenu } from '@/utils/floatingMenu'
 import { toDatetimeLocal } from '../utils/dates'
 
 const router = useRouter()
@@ -665,35 +303,16 @@ const explorerStore = useExplorerStore()
 const notesStore = useNotesStore()
 
 // State
-const selectedBoardId = ref<string | null>(null)
-const currentBoard = ref<BoardWithLists | null>(null)
 const sidebarWidth = ref(240)
-const isResizing = ref(false)
-const archivedLists = ref<List[]>([])
-const archivedCards = ref<Card[]>([])
 const isMobileSidebarOpen = ref(false)
 
-// Board menu
-const showBoardMenu = ref(false)
-const menuWrapper = ref<HTMLElement | null>(null)
+// Board state
+const currentBoard = ref<BoardWithLists | null>(null)
+const selectedBoardId = ref<string | null>(null)
 
-// Context menu
-const contextMenu = ref({
-  visible: false,
-  x: 0,
-  y: 0,
-  board: null as Board | null
-})
-
-// Board modal
-const boardModal = ref({
-  visible: false,
-  isEdit: false,
-  id: '',
-  name: '',
-  description: '',
-  color: '#3498db'
-})
+// Archive state
+const archivedLists = ref<any[]>([])
+const archivedCards = ref<any[]>([])
 
 // List modal
 const showAddListModal = ref(false)
@@ -718,29 +337,15 @@ const hideDoneCards = ref(false)
 // Labels
 const newLabelName = ref('')
 const newLabelColor = ref('#e74c3c')
-const labelColorPalette = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e', '#fd79a8', '#00cec9']
 
 // Filters
 const selectedLabelFilters = ref<string[]>([])
 const dueDateFilter = ref('')
 
 // Automations
-const newAutomation = ref({
-  name: '',
-  trigger_type: 'card_moved',
-  trigger_config: {} as Record<string, unknown>,
-  action_type: 'move_to_list',
-  action_config: {} as Record<string, unknown>
-})
-// Helper model for UI-only interval minutes (converted to seconds when creating)
-const intervalMinutes = ref<number | null>(null)
+// (State moved to AutomationsPanel component)
 
 // Drag and drop
-const draggingCard = ref<Card | null>(null)
-const draggingFromListId = ref<string>('')
-const dragOverCard = ref<string>('')
-const dropZoneListId = ref<string>('')
-const noteDropTargetCardId = ref<string>('')
 const boardContentDragOver = ref(false)
 
 // Delete modals
@@ -760,53 +365,12 @@ const promptModal = ref({
 })
 
 // Colors
-const colorPalette = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e']
+// (Board colors handled by WorkspaceSidebar component)
 
 // Computed
 const hasActiveFilters = computed(() => {
   return selectedLabelFilters.value.length > 0 || dueDateFilter.value !== ''
 })
-
-// Persistence keys
-const BOARDS_VIEW_KEY = 'viewState.boards'
-
-function loadBoardsViewState() {
-  try {
-    const raw = localStorage.getItem(BOARDS_VIEW_KEY)
-    if (!raw) return
-    const data = JSON.parse(raw)
-    if (data.selectedBoardId) selectedBoardId.value = data.selectedBoardId
-    if (typeof data.sidebarWidth === 'number') sidebarWidth.value = data.sidebarWidth
-    if (typeof data.showLabelsPanel === 'boolean') showLabelsPanel.value = data.showLabelsPanel
-    if (typeof data.showArchivePanel === 'boolean') showArchivePanel.value = data.showArchivePanel
-    if (typeof data.showAutomationsPanel === 'boolean') showAutomationsPanel.value = data.showAutomationsPanel
-    if (typeof data.showFiltersPanel === 'boolean') showFiltersPanel.value = data.showFiltersPanel
-    if (typeof data.hideDoneCards === 'boolean') hideDoneCards.value = data.hideDoneCards
-    if (Array.isArray(data.selectedLabelFilters)) selectedLabelFilters.value = data.selectedLabelFilters
-    if (typeof data.dueDateFilter === 'string') dueDateFilter.value = data.dueDateFilter
-  } catch (e) {
-    // ignore
-  }
-}
-
-function saveBoardsViewState() {
-  try {
-    const data = {
-      selectedBoardId: selectedBoardId.value,
-      sidebarWidth: sidebarWidth.value,
-      showLabelsPanel: showLabelsPanel.value,
-      showArchivePanel: showArchivePanel.value,
-      showAutomationsPanel: showAutomationsPanel.value,
-      showFiltersPanel: showFiltersPanel.value,
-      hideDoneCards: hideDoneCards.value,
-      selectedLabelFilters: selectedLabelFilters.value,
-      dueDateFilter: dueDateFilter.value
-    }
-    localStorage.setItem(BOARDS_VIEW_KEY, JSON.stringify(data))
-  } catch (e) {
-    // ignore
-  }
-}
 
 // NOTE: `activeLists` is used for the visible (non-archived) lists and drag-and-drop.
 
@@ -823,65 +387,7 @@ watch(currentBoard, (newBoard) => {
   activeLists.value = newBoard.lists.filter((lwc: any) => !lwc.list.archived)
 }, { immediate: true })
 
-const isAutomationValid = computed(() => {
-  if (!newAutomation.value.name.trim()) return false
-  if (!newAutomation.value.trigger_type) return false
-  if (!newAutomation.value.action_type) return false
-  
-  // Check trigger config
-  if (newAutomation.value.trigger_type === 'card_moved' && !newAutomation.value.trigger_config.target_list_id) return false
-  if (newAutomation.value.trigger_type === 'label_added' && !newAutomation.value.trigger_config.label_id) return false
-  if (newAutomation.value.trigger_type === 'interval' && (!intervalMinutes.value || intervalMinutes.value <= 0)) return false
-  
-  // Check action config
-  if (newAutomation.value.action_type === 'move_to_list' && !newAutomation.value.action_config.target_list_id) return false
-  if ((newAutomation.value.action_type === 'add_label' || newAutomation.value.action_type === 'remove_label') && !newAutomation.value.action_config.label_id) return false
-  if (newAutomation.value.action_type === 'set_status' && !newAutomation.value.action_config.status) return false
-  
-  return true
-})
 
-// Filter cards
-const getFilteredCards = (cards: Card[]) => {
-  return cards.filter(card => {
-    if (card.archived) return false
-    if (hideDoneCards.value && card.status === 'done') return false
-    
-    // Label filter
-    if (selectedLabelFilters.value.length > 0) {
-      const hasLabel = selectedLabelFilters.value.some(labelId => card.labels.includes(labelId))
-      if (!hasLabel) return false
-    }
-    
-    // Due date filter
-    if (dueDateFilter.value) {
-      const now = new Date()
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-      const weekEnd = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
-      
-      switch (dueDateFilter.value) {
-        case 'overdue':
-          if (!card.due_date || new Date(card.due_date) >= now) return false
-          break
-        case 'today':
-          if (!card.due_date) return false
-          const dueDate = new Date(card.due_date)
-          if (dueDate < today || dueDate >= new Date(today.getTime() + 24 * 60 * 60 * 1000)) return false
-          break
-        case 'week':
-          if (!card.due_date) return false
-          const dueDateWeek = new Date(card.due_date)
-          if (dueDateWeek < today || dueDateWeek > weekEnd) return false
-          break
-        case 'none':
-          if (card.due_date) return false
-          break
-      }
-    }
-    
-    return true
-  })
-}
 
 // Debounced/queued reorder: schedule rather than immediately calling API on every quick reorder.
 let _reorderTimer: ReturnType<typeof setTimeout> | null = null
@@ -930,11 +436,6 @@ function onListsDragEnd() {
   for (const a of archived) newOrdered.push(a)
 
   currentBoard.value.lists = newOrdered
-
-  // Clear any card drag visual state to avoid ghosting when lists were dragged
-  dropZoneListId.value = ''
-  dragOverCard.value = ''
-  noteDropTargetCardId.value = ''
 
   // Schedule API call (debounced)
   scheduleReorder(newActiveIds)
@@ -1022,20 +523,7 @@ function handleCreateFolder(parentId: string | null) {
 }
 
 function handleRename(item: ExplorerItem) {
-  if (item.type === 'board') {
-    // For boards, use our own edit modal
-    const board = explorerStore.boards.find(b => b.id === item.id)
-    if (board) {
-      boardModal.value = {
-        visible: true,
-        isEdit: true,
-        id: board.id,
-        name: board.name,
-        description: board.description || '',
-        color: board.color || '#3498db'
-      }
-    }
-  } else if (item.type === 'board-folder') {
+  if (item.type === 'board-folder') {
     const newName = prompt('Enter new folder name:', item.name)
     if (newName && newName !== item.name) {
       explorerStore.renameBoardFolder(item.id, newName)
@@ -1097,143 +585,7 @@ async function handleDrop(data: { draggedId: string; draggedType: 'note' | 'fold
 }
 
 // Board menu
-function toggleBoardMenu() {
-  showBoardMenu.value = !showBoardMenu.value
-}
-
-function closeBoardMenuOnClickOutside(event: MouseEvent) {
-  if (menuWrapper.value && !menuWrapper.value.contains(event.target as Node)) {
-    showBoardMenu.value = false
-  }
-}
-
-function handleContextAction(action: string) {
-  const board = contextMenu.value.board
-  contextMenu.value.visible = false
-  
-  if (!board) return
-  
-  if (action === 'edit') {
-    boardModal.value = {
-      visible: true,
-      isEdit: true,
-      id: board.id,
-      name: board.name,
-      description: board.description || '',
-      color: board.color || '#3498db'
-    }
-  } else if (action === 'delete') {
-    selectedBoardId.value = board.id
-    deleteBoardModalVisible.value = true
-  }
-}
-
-function closeContextMenu() {
-  contextMenu.value.visible = false
-}
-
-// Remove any existing floating context-menu elements from the DOM.
-// This ensures opening a new context menu closes previously opened ones.
-// legacy local close helper removed - use closeAllFloatingMenus() from utils
-
-// Kanban card context menu
-function openCardContextMenu(event: MouseEvent, card: Card, _listId: string) {
-  try {
-    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
-      { label: 'Edit', action: () => openCardModal(card) },
-      { label: 'Archive', action: () => archiveCard() },
-      { label: 'Delete', action: () => { deleteCardModalVisible.value = true; editingCard.value = card }, danger: true }
-    ]
-    openFloatingMenu(menuItems, event.clientX, event.clientY)
-  } catch (e) {
-    logger.error('openCardContextMenu failed', e)
-  }
-}
-
-// Kanban list context menu
-function openListContextMenu(event: MouseEvent, list: List) {
-  try {
-    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
-      { label: 'Add Card', action: () => openAddCardModal(list.id) },
-      { label: 'Archive', action: () => archiveList(list.id) },
-      { label: 'Delete', action: () => confirmDeleteList(list.id), danger: true }
-    ]
-    openFloatingMenu(menuItems, event.clientX, event.clientY)
-  } catch (e) {
-    logger.error('openListContextMenu failed', e)
-  }
-}
-
-// Board background context menu (right-click on empty space in board)
-function openBoardContextMenu(event: MouseEvent) {
-  try {
-    const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = [
-      { label: 'Add List', action: () => openAddListModal() }
-    ]
-    openFloatingMenu(menuItems, event.clientX, event.clientY)
-  } catch (e) {
-    logger.error('openBoardContextMenu failed', e)
-  }
-}
-
-// Board CRUD
-function openCreateBoardModal() {
-  boardModal.value = {
-    visible: false,
-    isEdit: false,
-    id: '',
-    name: '',
-    description: '',
-    color: '#3498db'
-  }
-  boardModal.value.visible = true
-}
-
-function openEditBoardModal() {
-  if (!currentBoard.value) return
-  showBoardMenu.value = false
-  boardModal.value = {
-    visible: true,
-    isEdit: true,
-    id: currentBoard.value.board.id,
-    name: currentBoard.value.board.name,
-    description: currentBoard.value.board.description || '',
-    color: currentBoard.value.board.color || '#3498db'
-  }
-}
-
-function closeBoardModal() {
-  boardModal.value.visible = false
-}
-
-async function saveBoardModal() {
-  try {
-    if (boardModal.value.isEdit) {
-      await explorerStore.updateBoard(boardModal.value.id, {
-        name: boardModal.value.name,
-        description: boardModal.value.description,
-        color: boardModal.value.color
-      })
-    } else {
-      const board = await explorerStore.createBoard(
-        boardModal.value.name,
-        boardModal.value.description || undefined,
-        boardModal.value.color
-      )
-      // Select the new board
-      selectedBoardId.value = board.id
-    }
-    closeBoardModal()
-    if (selectedBoardId.value) {
-      await fetchBoard(selectedBoardId.value)
-    }
-  } catch (error) {
-    logger.error('Failed to save board:', error)
-  }
-}
-
 function confirmDeleteBoard() {
-  showBoardMenu.value = false
   deleteBoardModalVisible.value = true
 }
 
@@ -1252,7 +604,6 @@ async function handleDeleteBoard() {
 
 // List CRUD
 function openAddListModal() {
-  showBoardMenu.value = false
   newListName.value = ''
   showAddListModal.value = true
 }
@@ -1434,19 +785,6 @@ async function handleDeleteCard() {
   }
 }
 
-async function archiveCard() {
-  if (!editingCard.value) return
-  try {
-    await cardsApi.archive(editingCard.value.id)
-    closeEditCardModal()
-    if (currentBoard.value) {
-      await fetchBoard(currentBoard.value.board.id)
-    }
-  } catch (error) {
-    logger.error('Failed to archive card:', error)
-  }
-}
-
 // Note: status toggling is handled inside the Edit Card modal (editingCard.status)
 
 async function restoreCard(cardId: string) {
@@ -1504,6 +842,18 @@ function editLabel(label: BoardLabel) {
   }
 }
 
+function handleEditLabel(label: BoardLabel) {
+  editLabel(label)
+}
+
+function handleCreateLabel(data: { name: string; color: string }) {
+  if (!currentBoard.value) return
+  // Update the reactive variables and call createLabel
+  newLabelName.value = data.name
+  newLabelColor.value = data.color
+  createLabel()
+}
+
 function deleteLabelById(labelId: string) {
   deleteLabelModal.value = { visible: true, labelId }
 }
@@ -1519,16 +869,6 @@ async function confirmDeleteLabel() {
   } catch (error) {
     logger.error('Failed to delete label:', error)
   }
-}
-
-function getLabelColor(labelId: string): string {
-  const label = currentBoard.value?.labels.find((l: BoardLabel) => l.id === labelId)
-  return label?.color || '#888'
-}
-
-function getLabelName(labelId: string): string {
-  const label = currentBoard.value?.labels.find((l: BoardLabel) => l.id === labelId)
-  return label?.name || ''
 }
 
 // Filter operations
@@ -1548,33 +888,25 @@ function clearFilters() {
 }
 
 // Automation operations
-async function createAutomation() {
-  if (!currentBoard.value || !isAutomationValid.value) return
+async function createAutomation(automation: any) {
+  if (!currentBoard.value || !automation) return
+  
   try {
-    // If interval trigger, copy minutes -> seconds into trigger_config
-    const triggerCfg = { ...newAutomation.value.trigger_config }
-    if (newAutomation.value.trigger_type === 'interval' && intervalMinutes.value) {
-      triggerCfg['interval_seconds'] = Math.max(1, Math.round(intervalMinutes.value * 60))
-    }
-
-    await automationsApi.create(currentBoard.value.board.id, {
-      name: newAutomation.value.name,
-      trigger_type: newAutomation.value.trigger_type,
-      trigger_config: triggerCfg,
-      action_type: newAutomation.value.action_type,
-      action_config: newAutomation.value.action_config
-    })
-    newAutomation.value = {
-      name: '',
-      trigger_type: 'card_moved',
-      trigger_config: {},
-      action_type: 'move_to_list',
-      action_config: {}
-    }
-    intervalMinutes.value = null
+    await automationsApi.create(currentBoard.value.board.id, automation)
     await fetchBoard(currentBoard.value.board.id)
   } catch (error) {
     logger.error('Failed to create automation:', error)
+  }
+}
+
+async function handleMoveCard(cardId: string, _fromListId: string, toListId: string, position: number) {
+  try {
+    await cardsApi.move({ card_id: cardId, target_list_id: toListId, position })
+    if (currentBoard.value) {
+      await fetchBoard(currentBoard.value.board.id)
+    }
+  } catch (error) {
+    logger.error('Failed to move card:', error)
   }
 }
 
@@ -1600,228 +932,22 @@ async function deleteAutomation(id: string) {
   }
 }
 
-function getTriggerLabel(type: string): string {
-  const labels: Record<string, string> = {
-    card_moved: 'card is moved to a list',
-    due_date_passed: 'due date passes',
-    label_added: 'label is added',
-    card_created: 'card is created',
-    status_changed: 'card status changes'
-  }
-  return labels[type] || type
+// AutomationsPanel event handlers
+async function handleAutomationCreate(automation: any) {
+  await createAutomation(automation)
 }
 
-function getActionLabel(type: string): string {
-  const labels: Record<string, string> = {
-    move_to_list: 'move card to list',
-    add_label: 'add label',
-    remove_label: 'remove label',
-    archive_card: 'archive card',
-    set_status: 'set card status'
-  }
-  return labels[type] || type
+async function handleAutomationToggle(automationId: string) {
+  await toggleAutomation(automationId)
 }
 
-function getTriggerDescription(type: string): string {
-  const desc: Record<string, string> = {
-    card_moved: 'Runs when a card is moved into a specific list (use trigger config to select target list).',
-    due_date_passed: 'Runs when a card\'s due date passes.',
-    label_added: 'Runs when a specific label is added to a card.',
-    card_created: 'Runs when a new card is created on the board.',
-    status_changed: 'Runs when a card\'s status changes.'
-  }
-  return desc[type] || ''
+async function handleAutomationDelete(automationId: string) {
+  await deleteAutomation(automationId)
 }
 
-function getActionDescription(type: string): string {
-  const desc: Record<string, string> = {
-    move_to_list: 'Moves the card to the selected list.',
-    add_label: 'Adds the selected label to the card.',
-    remove_label: 'Removes the selected label from the card.',
-    archive_card: 'Archives the card (moves to archive).',
-    set_status: 'Sets the card\'s status (for example: Done).'
-  }
-  return desc[type] || ''
-}
 
-// (Preview helpers defined below: newAutomationTriggerPreview, newAutomationActionPreview)
 
-const newAutomationTriggerPreview = computed(() => {
-  const a = newAutomation.value
-  if (!a.trigger_type) return ''
-  if (a.trigger_type === 'card_moved' && a.trigger_config && (a.trigger_config as any).target_list_id) {
-    const lid = (a.trigger_config as any).target_list_id
-    const listName = currentBoard.value?.lists.find((l: any) => l.list.id === lid)?.list.name
-    return listName ? `Moved to "${listName}"` : 'Card moved'
-  }
-  if (a.trigger_type === 'label_added' && a.trigger_config && (a.trigger_config as any).label_id) {
-    const lbl = currentBoard.value?.labels.find((l: any) => l.id === (a.trigger_config as any).label_id)
-    return lbl ? `Label added: ${lbl.name}` : 'Label added'
-  }
-  if (a.trigger_type === 'due_date_passed') return 'Due date passed'
-  if (a.trigger_type === 'card_created') return 'Card created'
-  if (a.trigger_type === 'interval') {
-    if (intervalMinutes.value) return `Every ${intervalMinutes.value} min`
-    const iv = (a.trigger_config as any).interval_seconds
-    if (iv) return `Every ${Math.round(iv/60)} min`
-    return 'Interval'
-  }
-  return a.trigger_type
-})
 
-const newAutomationActionPreview = computed(() => {
-  const a = newAutomation.value
-  if (!a.action_type) return ''
-  if (a.action_type === 'move_to_list' && a.action_config && (a.action_config as any).target_list_id) {
-    const lid = (a.action_config as any).target_list_id
-    const listName = currentBoard.value?.lists.find((l: any) => l.list.id === lid)?.list.name
-    return listName ? `Move → ${listName}` : 'Move to list'
-  }
-  if (a.action_type === 'set_status' && a.action_config && (a.action_config as any).status) return `Set status → ${(a.action_config as any).status}`
-  if (a.action_type === 'add_label' && a.action_config && (a.action_config as any).label_id) {
-    const lbl = currentBoard.value?.labels.find((l: any) => l.id === (a.action_config as any).label_id)
-    return lbl ? `Add label: ${lbl.name}` : 'Add label'
-  }
-  if (a.action_type === 'remove_label' && a.action_config && (a.action_config as any).label_id) {
-    const lbl = currentBoard.value?.labels.find((l: any) => l.id === (a.action_config as any).label_id)
-    return lbl ? `Remove label: ${lbl.name}` : 'Remove label'
-  }
-  if (a.action_type === 'archive_card') return 'Archive card'
-  return a.action_type
-})
-
-// Drag and drop handlers
-function onCardDragStart(event: DragEvent, card: Card, listId: string) {
-  if (!event.dataTransfer) return
-  draggingCard.value = card
-  draggingFromListId.value = listId
-  event.dataTransfer.effectAllowed = 'move'
-  event.dataTransfer.setData('text/plain', card.id)
-}
-
-function onCardDragEnd() {
-  draggingCard.value = null
-  draggingFromListId.value = ''
-  dragOverCard.value = ''
-  dropZoneListId.value = ''
-  noteDropTargetCardId.value = ''
-}
-
-function onCardDragOver(event: DragEvent, cardId: string, _index: number, _listId: string) {
-  dragOverCard.value = cardId
-  
-  // Check if this is a note/board being dragged from explorer
-  if (event.dataTransfer?.types.includes('application/x-explorer-item')) {
-    noteDropTargetCardId.value = cardId
-    event.dataTransfer.dropEffect = 'link'
-  }
-}
-
-function onCardDragLeave() {
-  dragOverCard.value = ''
-  noteDropTargetCardId.value = ''
-}
-
-function onListDragOver(_event: DragEvent, listId: string) {
-  // Only show the card drop zone when a card is being dragged.
-  // This prevents vuedraggable/list-drag interactions from leaving a ghosted drop zone.
-  if (draggingCard.value) {
-    dropZoneListId.value = listId
-  } else {
-    // If not dragging a card, ensure any previous drop zone is cleared.
-    if (dropZoneListId.value === listId) dropZoneListId.value = ''
-  }
-}
-
-async function onCardDrop(event: DragEvent, targetListId: string) {
-  event.preventDefault()
-  if (!draggingCard.value || !currentBoard.value) return
-  
-  const targetList = currentBoard.value.lists.find(lwc => lwc.list.id === targetListId)
-  if (!targetList) return
-  
-  // Get position at end of list
-  const filteredCards = getFilteredCards(targetList.cards)
-  const position = filteredCards.length
-  
-  try {
-    await cardsApi.move({
-      card_id: draggingCard.value.id,
-      target_list_id: targetListId,
-      position
-    })
-    await fetchBoard(currentBoard.value.board.id)
-  } catch (error) {
-    logger.error('Failed to move card:', error)
-  }
-  
-  onCardDragEnd()
-}
-
-async function onCardDropOnCard(event: DragEvent, targetCardId: string, targetIndex: number, targetListId: string) {
-  event.preventDefault()
-  
-  // Check if a note/board is being dropped to create a link
-  const explorerData = event.dataTransfer?.getData('application/x-explorer-item')
-  if (explorerData) {
-    try {
-      const { id, type, name } = JSON.parse(explorerData)
-      // Find the card and append a link to its description
-      const targetList = currentBoard.value?.lists.find(lwc => lwc.list.id === targetListId)
-      const card = targetList?.cards.find(c => c.id === targetCardId)
-      if (card) {
-        const linkType = type === 'note' ? 'notes' : 'boards'
-        const linkHtml = `\n\n📎 [${name}](${linkType}://${id})`
-        const newDescription = (card.description || '') + linkHtml
-        await cardsApi.update(card.id, { description: newDescription })
-        await fetchBoard(currentBoard.value!.board.id)
-      }
-    } catch (e) {
-      logger.error('Failed to create link:', e)
-    }
-    noteDropTargetCardId.value = ''
-    return
-  }
-  
-  if (!draggingCard.value || !currentBoard.value) return
-  
-  try {
-    await cardsApi.move({
-      card_id: draggingCard.value.id,
-      target_list_id: targetListId,
-      position: targetIndex
-    })
-    await fetchBoard(currentBoard.value.board.id)
-  } catch (error) {
-    logger.error('Failed to move card:', error)
-  }
-  
-  onCardDragEnd()
-}
-
-async function onCardDropAtEnd(event: DragEvent, targetListId: string) {
-  event.preventDefault()
-  if (!draggingCard.value || !currentBoard.value) return
-  
-  const targetList = currentBoard.value.lists.find(lwc => lwc.list.id === targetListId)
-  if (!targetList) return
-  
-  const filteredCards = getFilteredCards(targetList.cards)
-  const position = filteredCards.length
-  
-  try {
-    await cardsApi.move({
-      card_id: draggingCard.value.id,
-      target_list_id: targetListId,
-      position
-    })
-    await fetchBoard(currentBoard.value.board.id)
-  } catch (error) {
-    logger.error('Failed to move card:', error)
-  }
-  
-  onCardDragEnd()
-}
 
 // Board content drag handlers for opening notes/boards
 function onBoardContentDragEnter(event: DragEvent) {
@@ -1900,12 +1026,6 @@ function findBoardById(boards: any[], id: string): any {
   return null
 }
 
-// Helper to check if a card has note links
-function hasNoteLinks(description: string | undefined): boolean {
-  if (!description) return false
-  return description.includes('notes://') || description.includes('boards://')
-}
-
 // Get linked items from card description
 interface LinkedItem {
   type: 'note' | 'board'
@@ -1925,87 +1045,6 @@ function navigateToLinkedItem(item: LinkedItem) {
     selectBoard(item.id)
   }
 }
-
-// Helpers
-function getPreview(text: string): string {
-  if (!text) return ''
-  // Strip out link markdown for preview
-  const cleanText = text.replace(/📎 \[.*?\]\(.*?\)/g, '').trim()
-  return cleanText.length > 80 ? cleanText.substring(0, 80) + '...' : cleanText
-}
-
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-function isOverdue(cardOrDate: any): boolean {
-  // accept either the whole card or a date string
-  let dateStr: string | undefined
-  let status: string | undefined
-  if (typeof cardOrDate === 'string') {
-    dateStr = cardOrDate
-  } else if (cardOrDate && cardOrDate.due_date) {
-    dateStr = cardOrDate.due_date
-    status = cardOrDate.status
-  }
-  if (!dateStr) return false
-  // If card is marked done, it's not overdue
-  if (status === 'done') return false
-  return new Date(dateStr) < new Date()
-}
-
-// Resize
-function startSidebarResize() {
-  isResizing.value = true
-  document.addEventListener('mousemove', onResize)
-  document.addEventListener('mouseup', stopResize)
-}
-
-function onResize(event: MouseEvent) {
-  if (isResizing.value) {
-    sidebarWidth.value = Math.max(180, Math.min(400, event.clientX))
-  }
-}
-
-function stopResize() {
-  isResizing.value = false
-  document.removeEventListener('mousemove', onResize)
-  document.removeEventListener('mouseup', stopResize)
-}
-
-// Lifecycle
-onMounted(async () => {
-  // Restore saved view state (if any)
-  loadBoardsViewState()
-
-  await explorerStore.fetchAll()
-  document.addEventListener('click', closeContextMenu)
-  document.addEventListener('click', closeBoardMenuOnClickOutside)
-
-  // If a board was saved in the view state, select it
-  if (selectedBoardId.value) {
-    try {
-      await selectBoard(selectedBoardId.value)
-    } catch (e) {
-      // ignore
-    }
-  }
-
-  // Check if a board was requested from another view (fallback)
-  const storedBoardId = localStorage.getItem('selectedBoardId')
-  if (storedBoardId) {
-    localStorage.removeItem('selectedBoardId')
-    await selectBoard(storedBoardId)
-  }
-})
-
-onUnmounted(() => {
-  // Persist view-specific state so switching away and back restores context
-  saveBoardsViewState()
-  document.removeEventListener('click', closeContextMenu)
-  document.removeEventListener('click', closeBoardMenuOnClickOutside)
-})
 </script>
 
 <style scoped>
