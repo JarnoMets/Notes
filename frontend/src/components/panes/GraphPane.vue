@@ -140,10 +140,18 @@ function handleEdgeSelect(_edgeId: string | null) {
 }
 
 function handleOpenNode(node: GraphNode) {
-  if (node.node_type === 'note' && node.reference_id) {
+  if (!node.reference_id) {
+    // If it's a bubble or has no reference, maybe rename it?
+    handleRenameNode(node.id)
+    return
+  }
+
+  if (node.node_type === 'note') {
     (window as any).__openNote?.(node.reference_id)
-  } else if (node.node_type === 'board' && node.reference_id) {
+  } else if (node.node_type === 'board') {
     (window as any).__openBoard?.(node.reference_id)
+  } else if (node.node_type === 'graph') {
+    (window as any).__openGraph?.(node.reference_id)
   }
 }
 

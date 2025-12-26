@@ -202,6 +202,7 @@
       v-if="contextMenu.show" 
       class="context-menu" 
       :style="{ top: contextMenu.y + 'px', left: contextMenu.x + 'px' }"
+      @mousedown.stop
       @click.stop
     >
       <template v-if="contextMenu.type === 'canvas'">
