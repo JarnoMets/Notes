@@ -22,13 +22,6 @@ export interface EditorPane {
 // Use the explorer store directly. Importing here is fine since explorer doesn't import notes.
 
 export const useNotesStore = defineStore('notes', () => {
-  // File tree state
-  const folders = ref<NoteFolder[]>([])
-  const notes = ref<Note[]>([])
-  const expandedFolders = ref<Set<string>>(new Set())
-  const selectedItemId = ref<string | null>(null)
-  const selectedItemType = ref<'note' | 'folder' | null>(null)
-
   // Editor panes state
   const panes = ref<EditorPane[]>([
     { id: 'pane-1', tabs: [], activeTabId: null }
@@ -43,151 +36,7 @@ export const useNotesStore = defineStore('notes', () => {
   const activePane = computed(() => panes.value.find(p => p.id === activePaneId.value))
   const hasSecondPane = computed(() => panes.value.length > 1)
 
-  // File tree actions
-  async function fetchTree() {
-    try {
-      const response = await notesApi.getTree()
-      const tree: NotesTree = response.data
-      folders.value = tree.folders
-      notes.value = tree.notes
-    } catch (error) {
-      logger.error('Failed to fetch notes tree:', error)
-    }
-  }
-
-  function toggleFolder(folderId: string) {
-    if (expandedFolders.value.has(folderId)) {
-      expandedFolders.value.delete(folderId)
-    } else {
-      expandedFolders.value.add(folderId)
-    }
-  }
-
-  function selectItem(id: string, type: 'note' | 'folder') {
-    selectedItemId.value = id
-    selectedItemType.value = type
-  }
-
-  // Folder actions
-  async function createFolder(name: string, parentId: string | null = null) {
-    try {
-      const response = await foldersApi.create({ name, parent_id: parentId })
-      folders.value.push(response.data)
-      if (parentId) {
-        expandedFolders.value.add(parentId)
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to create folder:', error)
-      throw error
-    }
-  }
-
-  async function renameFolder(id: string, name: string) {
-    try {
-      const response = await foldersApi.update(id, { name })
-      const index = folders.value.findIndex(f => f.id === id)
-      if (index !== -1) {
-        folders.value[index] = response.data
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to rename folder:', error)
-      throw error
-    }
-  }
-
-  async function toggleFolderImportance(id: string) {
-    const folder = folders.value.find(f => f.id === id)
-    if (!folder) return
-    try {
-      const response = await foldersApi.update(id, { is_important: !folder.is_important })
-      const index = folders.value.findIndex(f => f.id === id)
-      if (index !== -1) {
-        folders.value[index] = response.data
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to toggle folder importance:', error)
-      throw error
-    }
-  }
-
-  async function deleteFolder(id: string) {
-    try {
-      await foldersApi.delete(id)
-      folders.value = folders.value.filter(f => f.id !== id)
-      // Also remove notes in the folder from cache
-      notes.value = notes.value.filter(n => n.folder_id !== id)
-    } catch (error) {
-      logger.error('Failed to delete folder:', error)
-      throw error
-    }
-  }
-
-  async function moveFolder(id: string, parentId: string | null, position: number) {
-    try {
-      const response = await foldersApi.move(id, { parent_id: parentId, position })
-      const index = folders.value.findIndex(f => f.id === id)
-      if (index !== -1) {
-        folders.value[index] = response.data
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to move folder:', error)
-      throw error
-    }
-  }
-
-  // Note actions
-  async function createNote(title: string, folderId: string | null = null) {
-    try {
-      const response = await notesApi.create({ title, folder_id: folderId })
-      notes.value.push(response.data)
-      if (folderId) {
-        expandedFolders.value.add(folderId)
-      }
-      // Open the new note
-      openNote(response.data.id)
-      return response.data
-    } catch (error) {
-      logger.error('Failed to create note:', error)
-      throw error
-    }
-  }
-
-  async function deleteNote(id: string) {
-    try {
-      await notesApi.delete(id)
-      notes.value = notes.value.filter(n => n.id !== id)
-      noteCache.value.delete(id)
-      // Close tabs for this note
-      panes.value.forEach(pane => {
-        pane.tabs = pane.tabs.filter(t => t.noteId !== id)
-        if (pane.activeTabId && !pane.tabs.find(t => t.id === pane.activeTabId)) {
-          pane.activeTabId = pane.tabs[0]?.id || null
-        }
-      })
-    } catch (error) {
-      logger.error('Failed to delete note:', error)
-      throw error
-    }
-  }
-
-  async function moveNote(id: string, folderId: string | null, position: number) {
-    try {
-      const response = await notesApi.move(id, { folder_id: folderId, position })
-      const index = notes.value.findIndex(n => n.id === id)
-      if (index !== -1) {
-        notes.value[index] = response.data
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to move note:', error)
-      throw error
-    }
-  }
-
+  // Actions
   async function fetchNote(id: string): Promise<NoteWithAttachments | null> {
     // Check cache first
     if (noteCache.value.has(id)) {
@@ -205,12 +54,6 @@ export const useNotesStore = defineStore('notes', () => {
   }
 
   async function updateNote(id: string, data: Partial<Note>) {
-    // Optimistic update
-    const index = notes.value.findIndex(n => n.id === id)
-    if (index !== -1) {
-      notes.value[index] = { ...notes.value[index], ...data }
-    }
-
     try {
       const response = await notesApi.update(id, data)
       // Update cache
@@ -218,13 +61,16 @@ export const useNotesStore = defineStore('notes', () => {
         const cached = noteCache.value.get(id)!
         noteCache.value.set(id, { ...cached, ...response.data })
       }
-      // Update notes list
-      const index = notes.value.findIndex(n => n.id === id)
-      if (index !== -1) {
-        notes.value[index] = { ...notes.value[index], ...response.data }
-      }
-      // Update tab title if needed
+      
+      // Update explorer store if needed (title change)
       if (data.title) {
+        const explorerStore = useExplorerStore()
+        const index = explorerStore.notes.findIndex(n => n.id === id)
+        if (index !== -1) {
+          explorerStore.notes[index] = { ...explorerStore.notes[index], ...response.data }
+        }
+
+        // Update tab title if needed
         panes.value.forEach(pane => {
           const tab = pane.tabs.find(t => t.noteId === id)
           if (tab) {
@@ -234,12 +80,6 @@ export const useNotesStore = defineStore('notes', () => {
       }
       return response.data
     } catch (error) {
-      // Revert optimistic update on error
-      if (index !== -1) {
-        // We would need to refetch or store the original value
-        // For now, just log the error
-        logger.error('Failed to update note, optimistic update may be stale:', error)
-      }
       logger.error('Failed to update note:', error)
       throw error
     }
@@ -268,28 +108,6 @@ export const useNotesStore = defineStore('notes', () => {
     }
   }
 
-  async function toggleNoteImportance(id: string) {
-    const note = notes.value.find(n => n.id === id)
-    if (!note) return
-    try {
-      const response = await notesApi.update(id, { is_important: !note.is_important })
-      // Update cache
-      if (noteCache.value.has(id)) {
-        const cached = noteCache.value.get(id)!
-        noteCache.value.set(id, { ...cached, ...response.data })
-      }
-      // Update notes list
-      const index = notes.value.findIndex(n => n.id === id)
-      if (index !== -1) {
-        notes.value[index] = { ...notes.value[index], ...response.data }
-      }
-      return response.data
-    } catch (error) {
-      logger.error('Failed to toggle note importance:', error)
-      throw error
-    }
-  }
-
   function invalidateNoteCache(id: string) {
     noteCache.value.delete(id)
   }
@@ -308,19 +126,10 @@ export const useNotesStore = defineStore('notes', () => {
       return
     }
 
-    // Find note title - check local notes first, then explorer store
-    let title = 'Untitled'
-    const note = notes.value.find(n => n.id === noteId)
-    if (note?.title) {
-      title = note.title
-    } else {
-      // Try to get from explorer store
-        const explorerStore = useExplorerStore()
-        const explorerNote = explorerStore.getNoteById(noteId)
-      if (explorerNote?.title) {
-        title = explorerNote.title
-      }
-    }
+    // Find note title from explorer store
+    const explorerStore = useExplorerStore()
+    const explorerNote = explorerStore.getNoteById(noteId)
+    const title = explorerNote?.title || 'Untitled'
 
     // Create new tab
     const newTab: OpenTab = {
@@ -351,18 +160,10 @@ export const useNotesStore = defineStore('notes', () => {
       return
     }
 
-    // Find note title
-    let title = 'Untitled'
-    const note = notes.value.find(n => n.id === noteId)
-    if (note?.title) {
-      title = note.title
-    } else {
-      const explorerStore = useExplorerStore()
-      const explorerNote = explorerStore.getNoteById(noteId)
-      if (explorerNote?.title) {
-        title = explorerNote.title
-      }
-    }
+    // Find note title from explorer store
+    const explorerStore = useExplorerStore()
+    const explorerNote = explorerStore.getNoteById(noteId)
+    const title = explorerNote?.title || 'Untitled'
 
     // Create new tab
     const newTab: OpenTab = {
@@ -556,11 +357,6 @@ export const useNotesStore = defineStore('notes', () => {
 
   return {
     // State
-    folders,
-    notes,
-    expandedFolders,
-    selectedItemId,
-    selectedItemType,
     panes,
     activePaneId,
     splitDirection,
@@ -571,20 +367,8 @@ export const useNotesStore = defineStore('notes', () => {
     hasSecondPane,
 
     // Actions
-    fetchTree,
-    toggleFolder,
-    selectItem,
-    createFolder,
-    renameFolder,
-    toggleFolderImportance,
-    deleteFolder,
-    moveFolder,
-    createNote,
-    deleteNote,
-    moveNote,
     fetchNote,
     updateNote,
-    toggleNoteImportance,
     invalidateNoteCache,
     undoNote,
     redoNote,

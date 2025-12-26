@@ -127,9 +127,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '../api/graphs'
-import { useExplorerStore, type ExplorerItem } from '../stores/explorer'
-import { useNotesStore } from '../stores/notes'
-import type { GraphWithData } from '../types'
+import { useNotesStore } from '@/stores/notes'
+import { useExplorerStore } from '@/stores/explorer'
+import { storeToRefs } from 'pinia'
 import { WorkspaceSidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle } from '../components/workspace'
 import ExplorerTree from '../components/common/ui/ExplorerTree.vue'
 import Icon from '../components/common/ui/Icon.vue'
@@ -140,8 +140,9 @@ import logger from '@/utils/logger'
 
 const router = useRouter()
 const route = useRoute()
-const explorerStore = useExplorerStore()
 const notesStore = useNotesStore()
+const explorerStore = useExplorerStore()
+const { graphs, graphFolders, expandedGraphFolders, selectedItemId, selectedItemType } = storeToRefs(explorerStore)
 
 // State
 const sidebarWidth = ref(240)
@@ -465,8 +466,10 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
     // If referenceId is provided, fetch the item to get its name
     if (referenceId) {
       if (type === 'note') {
-        const note = notesStore.notes.find(n => n.id === referenceId)
-        if (note) label = note.title
+        const note = explorerStore.notes.find(n => n.id === referenceId)
+        if (note) {
+          label = note.title
+        }
       } else if (type === 'board') {
         const board = explorerStore.boards.find(b => b.id === referenceId)
         if (board) label = board.name

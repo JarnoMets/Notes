@@ -117,6 +117,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useNotesStore } from '@/stores/notes'
+import { useExplorerStore } from '@/stores/explorer'
 import { storeToRefs } from 'pinia'
 import Icon from './Icon.vue'
 import logger from '@/utils/logger'
@@ -147,7 +148,8 @@ const emit = defineEmits<{
 }>()
 
 const notesStore = useNotesStore()
-const { selectedItemId, selectedItemType } = storeToRefs(notesStore)
+const explorerStore = useExplorerStore()
+const { selectedItemId, selectedItemType } = storeToRefs(explorerStore)
 
 const isDragOver = ref(false)
 const isDragging = ref(false)
@@ -309,7 +311,7 @@ function handleDrop(event: DragEvent) {
 
 // Helper to check if targetId is a descendant of folderId
 function isDescendant(folderId: string, targetId: string): boolean {
-  const folders = notesStore.folders
+  const folders = explorerStore.folders
   let currentId: string | null = targetId
   
   while (currentId) {
