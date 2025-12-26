@@ -73,11 +73,19 @@
             :nodes="currentGraph.nodes"
             :edges="currentGraph.edges"
             @node-move="handleNodeMove"
+            @node-move-finished="handleNodeMoveFinished"
             @create-node="handleCreateNode"
             @create-edge="handleCreateEdge"
             @node-select="handleNodeSelect"
             @edge-select="handleEdgeSelect"
             @open-node="handleOpenNodeFromGraph"
+            @delete-node="handleDeleteNode"
+            @delete-edge="handleDeleteEdge"
+            @rename-node="handleRenameNode"
+            @update-node="handleUpdateNode"
+            @update-edge="handleUpdateEdge"
+            @undo="undo"
+            @redo="redo"
           />
         </div>
       </div>
@@ -142,6 +150,49 @@ const isMobileSidebarOpen = ref(false)
 // Graph state
 const currentGraph = ref<GraphWithData | null>(null)
 const selectedGraphId = ref<string | null>(null)
+
+// Undo/Redo state
+const undoStack = ref<string[]>([])
+const redoStack = ref<string[]>([])
+
+function saveState() {
+  if (!currentGraph.value) return
+  const state = JSON.stringify({
+    nodes: currentGraph.value.nodes,
+    edges: currentGraph.value.edges
+  })
+  undoStack.value.push(state)
+  if (undoStack.value.length > 50) undoStack.value.shift()
+  redoStack.value = []
+}
+
+function undo() {
+  if (undoStack.value.length === 0 || !currentGraph.value) return
+  const currentState = JSON.stringify({
+    nodes: currentGraph.value.nodes,
+    edges: currentGraph.value.edges
+  })
+  redoStack.value.push(currentState)
+  
+  const prevState = JSON.parse(undoStack.value.pop()!)
+  currentGraph.value.nodes = prevState.nodes
+  currentGraph.value.edges = prevState.edges
+  
+  // Note: In a real app, we'd sync the whole graph or individual changes to the server here
+}
+
+function redo() {
+  if (redoStack.value.length === 0 || !currentGraph.value) return
+  const currentState = JSON.stringify({
+    nodes: currentGraph.value.nodes,
+    edges: currentGraph.value.edges
+  })
+  undoStack.value.push(currentState)
+  
+  const nextState = JSON.parse(redoStack.value.pop()!)
+  currentGraph.value.nodes = nextState.nodes
+  currentGraph.value.edges = nextState.edges
+}
 
 // Persistence
 const GRAPHS_SELECTED_KEY = 'graphs.selectedGraphId'
@@ -381,23 +432,33 @@ async function handleDeleteGraph() {
 async function handleNodeMove(nodeId: string, x: number, y: number) {
   if (!currentGraph.value) return
   
-  // Optimistic update
+  // Optimistic update (local only)
   const node = currentGraph.value.nodes.find(n => n.id === nodeId)
   if (node) {
     node.x = x
     node.y = y
   }
+}
+
+async function handleNodeMoveFinished(movedNodes: { id: string, x: number, y: number }[]) {
+  if (!currentGraph.value || movedNodes.length === 0) return
   
+  saveState()
   try {
-    await graphNodesApi.update(currentGraph.value.graph.id, nodeId, { x, y })
+    // Update all moved nodes on server
+    await Promise.all(movedNodes.map(n => 
+      graphNodesApi.update(currentGraph.value!.graph.id, n.id, { x: n.x, y: n.y })
+    ))
   } catch (e) {
-    logger.error('Failed to update node position', e)
+    logger.error('Failed to update node positions', e)
+    undo()
   }
 }
 
 async function handleCreateNode(x: number, y: number, type: any, referenceId?: string) {
   if (!currentGraph.value) return
   
+  saveState()
   try {
     let label = 'New Node'
     
@@ -426,12 +487,14 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
     currentGraph.value.nodes.push(response.data)
   } catch (e) {
     logger.error('Failed to create node', e)
+    undo()
   }
 }
 
 async function handleCreateEdge(sourceId: string, targetId: string) {
   if (!currentGraph.value) return
   
+  saveState()
   try {
     const response = await graphEdgesApi.create(currentGraph.value.graph.id, {
       source_node_id: sourceId,
@@ -443,6 +506,88 @@ async function handleCreateEdge(sourceId: string, targetId: string) {
     currentGraph.value.edges.push(response.data)
   } catch (e) {
     logger.error('Failed to create edge', e)
+    undo()
+  }
+}
+
+async function handleDeleteNode(nodeId: string) {
+  if (!currentGraph.value) return
+  
+  saveState()
+  try {
+    await graphNodesApi.delete(currentGraph.value.graph.id, nodeId)
+    currentGraph.value.nodes = currentGraph.value.nodes.filter(n => n.id !== nodeId)
+    // Also remove connected edges
+    currentGraph.value.edges = currentGraph.value.edges.filter(e => 
+      e.source_node_id !== nodeId && e.target_node_id !== nodeId
+    )
+  } catch (e) {
+    logger.error('Failed to delete node', e)
+    undo()
+  }
+}
+
+async function handleDeleteEdge(edgeId: string) {
+  if (!currentGraph.value) return
+  
+  saveState()
+  try {
+    await graphEdgesApi.delete(currentGraph.value.graph.id, edgeId)
+    currentGraph.value.edges = currentGraph.value.edges.filter(e => e.id !== edgeId)
+  } catch (e) {
+    logger.error('Failed to delete edge', e)
+    undo()
+  }
+}
+
+async function handleRenameNode(nodeId: string) {
+  if (!currentGraph.value) return
+  
+  const node = currentGraph.value.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  const newLabel = prompt('Enter new label:', node.label)
+  if (newLabel !== null && newLabel !== node.label) {
+    saveState()
+    try {
+      await graphNodesApi.update(currentGraph.value.graph.id, nodeId, { label: newLabel })
+      node.label = newLabel
+    } catch (e) {
+      logger.error('Failed to rename node', e)
+      undo()
+    }
+  }
+}
+
+async function handleUpdateNode(nodeId: string, updates: any) {
+  if (!currentGraph.value) return
+  
+  const node = currentGraph.value.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  saveState()
+  try {
+    await graphNodesApi.update(currentGraph.value.graph.id, nodeId, updates)
+    Object.assign(node, updates)
+  } catch (e) {
+    logger.error('Failed to update node', e)
+    undo()
+  }
+}
+
+async function handleUpdateEdge(edgeId: string, updates: any) {
+  if (!currentGraph.value) return
+  
+  const edge = currentGraph.value.edges.find(e => e.id === edgeId)
+  if (!edge) return
+  
+  saveState()
+  try {
+    await graphEdgesApi.update(currentGraph.value.graph.id, edgeId, updates)
+    Object.assign(edge, updates)
+  } catch (e) {
+    logger.error('Failed to update edge', e)
+    undo()
   }
 }
 

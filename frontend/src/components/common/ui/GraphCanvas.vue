@@ -115,6 +115,34 @@
               :stroke="selectedNodeIds.has(node.id) ? 'var(--accent)' : (node.border_color || 'var(--border-primary)')"
               :stroke-width="selectedNodeIds.has(node.id) ? 2 : 1"
             />
+
+            <!-- Node Shape: Diamond -->
+            <path
+              v-else-if="node.shape === 'diamond'"
+              :d="`M 0 ${-node.height / 2} L ${node.width / 2} 0 L 0 ${node.height / 2} L ${-node.width / 2} 0 Z`"
+              :fill="node.color || 'var(--bg-secondary)'"
+              :stroke="selectedNodeIds.has(node.id) ? 'var(--accent)' : (node.border_color || 'var(--border-primary)')"
+              :stroke-width="selectedNodeIds.has(node.id) ? 2 : 1"
+            />
+
+            <!-- Node Shape: Ellipse -->
+            <ellipse
+              v-else-if="node.shape === 'ellipse'"
+              :rx="node.width / 2"
+              :ry="node.height / 2"
+              :fill="node.color || 'var(--bg-secondary)'"
+              :stroke="selectedNodeIds.has(node.id) ? 'var(--accent)' : (node.border_color || 'var(--border-primary)')"
+              :stroke-width="selectedNodeIds.has(node.id) ? 2 : 1"
+            />
+
+            <!-- Node Shape: Hexagon -->
+            <path
+              v-else-if="node.shape === 'hexagon'"
+              :d="getHexagonPath(node.width, node.height)"
+              :fill="node.color || 'var(--bg-secondary)'"
+              :stroke="selectedNodeIds.has(node.id) ? 'var(--accent)' : (node.border_color || 'var(--border-primary)')"
+              :stroke-width="selectedNodeIds.has(node.id) ? 2 : 1"
+            />
             
             <!-- Node Label -->
             <text 
@@ -208,6 +236,8 @@
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'rectangle' })">Rectangle</div>
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'rounded_rect' })">Rounded Rect</div>
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'diamond' })">Diamond</div>
+            <div class="menu-item" @click="updateNodeAtMenu({ shape: 'ellipse' })">Ellipse</div>
+            <div class="menu-item" @click="updateNodeAtMenu({ shape: 'hexagon' })">Hexagon</div>
           </div>
         </div>
 
@@ -284,6 +314,8 @@
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'rectangle' })">Rectangle</div>
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'rounded_rect' })">Rounded Rect</div>
             <div class="menu-item" @click="updateNodeAtMenu({ shape: 'diamond' })">Diamond</div>
+            <div class="menu-item" @click="updateNodeAtMenu({ shape: 'ellipse' })">Ellipse</div>
+            <div class="menu-item" @click="updateNodeAtMenu({ shape: 'hexagon' })">Hexagon</div>
           </div>
         </div>
 
@@ -325,7 +357,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'node-move': [nodeId: string, x: number, y: number]
+  'node-move-finished': [nodes: { id: string, x: number, y: number }[]]
   'node-select': [nodeId: string | null]
+  'selection-change': [nodeIds: string[]]
   'edge-select': [edgeId: string | null]
   'create-node': [x: number, y: number, type: NodeType, referenceId?: string]
   'create-edge': [sourceId: string, targetId: string]
@@ -335,6 +369,8 @@ const emit = defineEmits<{
   'rename-node': [nodeId: string]
   'update-node': [nodeId: string, updates: any]
   'update-edge': [edgeId: string, updates: any]
+  'undo': []
+  'redo': []
 }>()
 
 // State
@@ -378,10 +414,25 @@ function handleKeyDown(event: KeyboardEvent) {
     if (selectedNodeIds.value.size > 0) {
       selectedNodeIds.value.forEach(id => emit('delete-node', id))
       selectedNodeIds.value.clear()
+      emit('selection-change', [])
     } else if (selectedEdgeId.value) {
       emit('delete-edge', selectedEdgeId.value)
       selectedEdgeId.value = null
     }
+  }
+
+  // Undo/Redo
+  if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+    if (event.shiftKey) {
+      emit('redo')
+    } else {
+      emit('undo')
+    }
+    event.preventDefault()
+  }
+  if ((event.ctrlKey || event.metaKey) && event.key === 'y') {
+    emit('redo')
+    event.preventDefault()
   }
 }
 
@@ -477,6 +528,13 @@ function truncateLabel(label: string, width: number): string {
   return label
 }
 
+function getHexagonPath(width: number, height: number): string {
+  const w = width / 2
+  const h = height / 2
+  const quarterW = w / 2
+  return `M ${-w} 0 L ${-quarterW} ${-h} L ${quarterW} ${-h} L ${w} 0 L ${quarterW} ${h} L ${-quarterW} ${h} Z`
+}
+
 // Interaction Handlers
 function handleCanvasContextMenu(event: MouseEvent) {
   if (props.readOnly) return
@@ -509,6 +567,7 @@ function handleMouseDown(event: MouseEvent) {
       selectedEdgeId.value = null
       emit('node-select', null)
       emit('edge-select', null)
+      emit('selection-change', [])
     }
 
     window.addEventListener('mousemove', handleMouseMove)
@@ -697,27 +756,36 @@ function handleMouseMove(event: MouseEvent) {
       
       selectionBox.value.width = mouseX - selectionBox.value.x
       selectionBox.value.height = mouseY - selectionBox.value.y
+
+      // Update selection in real-time
+      const x1 = Math.min(selectionBox.value.x, selectionBox.value.x + selectionBox.value.width)
+      const x2 = Math.max(selectionBox.value.x, selectionBox.value.x + selectionBox.value.width)
+      const y1 = Math.min(selectionBox.value.y, selectionBox.value.y + selectionBox.value.height)
+      const y2 = Math.max(selectionBox.value.y, selectionBox.value.y + selectionBox.value.height)
+      
+      selectedNodeIds.value.clear()
+      props.nodes.forEach(node => {
+        if (node.x >= x1 && node.x <= x2 && node.y >= y1 && node.y <= y2) {
+          selectedNodeIds.value.add(node.id)
+        }
+      })
     }
   }
 }
 
 function handleMouseUp() {
   if (isSelecting.value) {
-    // Find nodes in selection box
-    const x1 = Math.min(selectionBox.value.x, selectionBox.value.x + selectionBox.width)
-    const x2 = Math.max(selectionBox.value.x, selectionBox.value.x + selectionBox.width)
-    const y1 = Math.min(selectionBox.value.y, selectionBox.value.y + selectionBox.height)
-    const y2 = Math.max(selectionBox.value.y, selectionBox.value.y + selectionBox.height)
-    
-    selectedNodeIds.value.clear()
-    props.nodes.forEach(node => {
-      if (node.x >= x1 && node.x <= x2 && node.y >= y1 && node.y <= y2) {
-        selectedNodeIds.value.add(node.id)
-      }
-    })
-    
+    emit('selection-change', Array.from(selectedNodeIds.value))
     isSelecting.value = false
     selectionBox.value.active = false
+  }
+
+  if (isDraggingNode.value) {
+    const movedNodes = Array.from(selectedNodeIds.value).map(id => {
+      const node = getNode(id)
+      return { id, x: node?.x || 0, y: node?.y || 0 }
+    })
+    emit('node-move-finished', movedNodes)
   }
 
   isDraggingCanvas.value = false
@@ -811,12 +879,14 @@ function selectNode(node: GraphNode) {
   }
   selectedEdgeId.value = null
   emit('node-select', node.id)
+  emit('selection-change', Array.from(selectedNodeIds.value))
   emit('edge-select', null)
 }
 
 function selectEdge(edge: GraphEdge) {
   selectedEdgeId.value = edge.id
   selectedNodeIds.value.clear()
+  emit('selection-change', [])
   emit('edge-select', edge.id)
   emit('node-select', null)
 }
