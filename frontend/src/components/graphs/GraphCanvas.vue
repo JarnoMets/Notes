@@ -47,22 +47,31 @@
       <g :transform="`translate(${transform.x}, ${transform.y}) scale(${transform.k})`">
         <!-- Edges -->
         <g class="edges-layer">
-          <path 
-            v-for="edge in edges" 
-            :key="edge.id"
-            :d="getEdgePath(edge)"
-            :stroke="selectedEdgeId === edge.id ? 'var(--accent)' : (edge.color || 'var(--text-muted)')"
-            :stroke-width="edge.thickness || 2"
-            :stroke-dasharray="getEdgeDashArray(edge.style)"
-            fill="none"
-            :marker-start="getMarkerStart(edge)"
-            :marker-end="getMarkerEnd(edge)"
-            class="graph-edge"
-            :class="{ selected: selectedEdgeId === edge.id }"
-            @mousedown.stop
-            @click.stop="selectEdge(edge)"
-            @contextmenu.stop="handleEdgeContextMenu($event, edge)"
-          />
+          <template v-for="edge in edges" :key="edge.id">
+            <!-- Ghost path for easier selection -->
+            <path 
+              :d="getEdgePath(edge)"
+              stroke="transparent"
+              stroke-width="15"
+              fill="none"
+              class="edge-hitbox"
+              @mousedown.stop
+              @click.stop="selectEdge(edge)"
+              @contextmenu.stop="handleEdgeContextMenu($event, edge)"
+            />
+            <path 
+              :d="getEdgePath(edge)"
+              :stroke="selectedEdgeId === edge.id ? 'var(--accent)' : (edge.color || 'var(--text-muted)')"
+              :stroke-width="edge.thickness || 2"
+              :stroke-dasharray="getEdgeDashArray(edge.style)"
+              fill="none"
+              :marker-start="getMarkerStart(edge)"
+              :marker-end="getMarkerEnd(edge)"
+              class="graph-edge"
+              :class="{ selected: selectedEdgeId === edge.id }"
+              style="pointer-events: none;"
+            />
+          </template>
           
           <!-- Temporary Edge (Linking) -->
           <line 
@@ -465,42 +474,55 @@ function getEdgePath(edge: GraphEdge): string {
   
   if (!source || !target) return ''
   
-  // Calculate intersection with node boundaries
   const dx = target.x - source.x
   const dy = target.y - source.y
   const angle = Math.atan2(dy, dx)
   
-  // Source boundary point
-  let sx = source.x
-  let sy = source.y
-  if (source.shape === 'circle') {
-    sx += (source.width / 2) * Math.cos(angle)
-    sy += (source.width / 2) * Math.sin(angle)
-  } else {
-    // Rectangle boundary (simplified)
-    const absCos = Math.abs(Math.cos(angle))
-    const absSin = Math.abs(Math.sin(angle))
-    const scale = Math.min(source.width / 2 / absCos, source.height / 2 / absSin)
-    sx += scale * Math.cos(angle)
-    sy += scale * Math.sin(angle)
+  const getIntersection = (node: GraphNode, angle: number) => {
+    const w = node.width / 2
+    const h = node.height / 2
+    const cos = Math.cos(angle)
+    const sin = Math.sin(angle)
+    
+    let r = 0
+    switch (node.shape) {
+      case 'circle':
+        r = w
+        break
+      case 'ellipse':
+        r = (w * h) / Math.sqrt((h * cos) ** 2 + (w * sin) ** 2)
+        break
+      case 'diamond':
+        r = 1 / (Math.abs(cos) / w + Math.abs(sin) / h)
+        break
+      case 'hexagon':
+        // Hexagon is more complex, but we can approximate with a modified rectangle
+        // or use the actual 6-sided logic. Let's do a slightly better approximation.
+        const absCos = Math.abs(cos)
+        const absSin = Math.abs(sin)
+        if (absCos > 0.5) { // Sides
+           r = w / absCos
+        } else { // Top/Bottom slants
+           r = h / (absSin + 0.5 * absCos * (h/w))
+        }
+        break
+      case 'rectangle':
+      case 'rounded_rect':
+      default:
+        r = Math.min(w / Math.abs(cos), h / Math.abs(sin))
+        break
+    }
+    
+    return {
+      x: node.x + r * cos,
+      y: node.y + r * sin
+    }
   }
+
+  const start = getIntersection(source, angle)
+  const end = getIntersection(target, angle + Math.PI)
   
-  // Target boundary point
-  let tx = target.x
-  let ty = target.y
-  if (target.shape === 'circle') {
-    tx -= (target.width / 2) * Math.cos(angle)
-    ty -= (target.width / 2) * Math.sin(angle)
-  } else {
-    // Rectangle boundary (simplified)
-    const absCos = Math.abs(Math.cos(angle))
-    const absSin = Math.abs(Math.sin(angle))
-    const scale = Math.min(target.width / 2 / absCos, target.height / 2 / absSin)
-    tx -= scale * Math.cos(angle)
-    ty -= scale * Math.sin(angle)
-  }
-  
-  return `M ${sx},${sy} L ${tx},${ty}`
+  return `M ${start.x},${start.y} L ${end.x},${end.y}`
 }
 
 function getEdgeDashArray(style: EdgeStyle): string {
@@ -1061,7 +1083,15 @@ function onDrop(event: DragEvent) {
   transition: stroke-width 0.2s;
 }
 
-.graph-edge:hover {
+.edge-hitbox {
+  cursor: pointer;
+}
+
+.edge-hitbox:hover + .graph-edge {
+  stroke-width: 3;
+}
+
+.graph-edge.selected {
   stroke-width: 3;
 }
 
