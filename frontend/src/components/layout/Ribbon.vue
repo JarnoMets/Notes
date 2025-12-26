@@ -35,8 +35,11 @@
     </div>
     
     <div class="ribbon-bottom">
-      <button class="ribbon-btn" @click="$emit('open-theme-selector')" title="Change Theme">
-        <Icon name="palette" :size="20" />
+      <button class="ribbon-btn theme-btn" @click="$emit('open-theme-selector')" title="Change Theme">
+        <div class="theme-icon-wrapper">
+          <Icon name="palette" :size="18" />
+          <div class="theme-dot"></div>
+        </div>
       </button>
       <div class="user-avatar-container" @click="$emit('open-user-menu')" title="User Menu">
         <img 
@@ -142,6 +145,28 @@ defineEmits<{
 .ribbon-btn.active {
   color: var(--accent);
   background: var(--accent-light);
+}
+
+.theme-btn {
+  position: relative;
+}
+
+.theme-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-dot {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-tertiary);
 }
 
 .user-avatar-container {

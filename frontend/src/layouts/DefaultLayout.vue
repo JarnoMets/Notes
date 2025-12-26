@@ -68,10 +68,18 @@
           :class="{ active: themeStore.currentTheme === themeOption.name }"
           @click="selectTheme(themeOption.name)"
         >
-          <div class="theme-preview">
-            <Icon :name="themeOption.icon" :size="18" />
+          <div class="theme-swatch" :style="{ background: themeOption.colors.bgPrimary }">
+            <div class="swatch-accent" :style="{ background: themeOption.colors.accent }"></div>
           </div>
-          <span class="theme-label">{{ themeOption.label }}</span>
+          <div class="theme-info">
+            <span class="theme-label">{{ themeOption.label }}</span>
+            <div class="theme-colors-preview">
+              <div class="color-dot" :style="{ background: themeOption.colors.accent }"></div>
+              <div class="color-dot" :style="{ background: themeOption.colors.success }"></div>
+              <div class="color-dot" :style="{ background: themeOption.colors.danger }"></div>
+            </div>
+          </div>
+          <Icon v-if="themeStore.currentTheme === themeOption.name" name="check" :size="14" class="active-check" />
         </button>
       </div>
     </div>
@@ -810,20 +818,22 @@ onUnmounted(() => {
 .theme-option {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: transparent;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: all 0.2s ease;
   text-align: left;
+  margin-bottom: 4px;
 }
 
 .theme-option:hover {
   background: var(--bg-hover);
+  transform: translateX(4px);
 }
 
 .theme-option.active {
@@ -831,17 +841,51 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-.theme-preview {
+.theme-swatch {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--border-primary);
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.swatch-accent {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 50%;
+  height: 50%;
+  border-top-left-radius: 4px;
+}
+
+.theme-info {
+  flex: 1;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .theme-label {
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
+}
+
+.theme-colors-preview {
+  display: flex;
+  gap: 4px;
+}
+
+.color-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.active-check {
+  color: var(--accent);
 }
 </style>
 
