@@ -46,7 +46,7 @@
 import { ref } from 'vue'
 import type { NoteWithAttachments, NoteAttachment } from '@/types'
 import { formatFileSize, isImageMimeType, getFileIcon } from '@/composables'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   note: NoteWithAttachments | null

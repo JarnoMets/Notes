@@ -1,5 +1,5 @@
 <template>
-  <div class="workspace-sidebar" :class="{ open: isOpen }" :style="{ width: width + 'px' }">
+  <div class="sidebar" :class="{ open: isOpen }" :style="{ width: width + 'px' }">
     <slot></slot>
   </div>
 </template>
@@ -12,7 +12,7 @@ defineProps<{
 </script>
 
 <style scoped>
-.workspace-sidebar {
+.sidebar {
   display: flex;
   flex-direction: column;
   background: var(--bg-secondary);
@@ -25,7 +25,7 @@ defineProps<{
 
 /* Mobile */
 @media (max-width: 768px) {
-  .workspace-sidebar {
+  .sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -41,7 +41,7 @@ defineProps<{
     border-right: none;
   }
 
-  .workspace-sidebar.open {
+  .sidebar.open {
     transform: translateX(0);
   }
 }

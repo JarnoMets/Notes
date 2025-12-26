@@ -78,7 +78,7 @@ import NotePane from '../panes/NotePane.vue'
 import BoardPane from '../panes/BoardPane.vue'
 import GraphPane from '../panes/GraphPane.vue'
 import CalendarPane from '../panes/CalendarPane.vue'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   leaf: LayoutLeaf

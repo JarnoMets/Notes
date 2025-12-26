@@ -66,8 +66,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { BoardLabel } from '../../types'
-import Icon from '../common/ui/Icon.vue'
-import PromptModal from '../common/modals/PromptModal.vue'
+import Icon from '../ui/Icon.vue'
+import PromptModal from '../modals/PromptModal.vue'
 
 defineProps<{
   visible: boolean

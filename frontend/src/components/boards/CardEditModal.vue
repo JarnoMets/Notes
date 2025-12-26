@@ -138,8 +138,8 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import type { Card, BoardLabel } from '../../types'
-import Icon from '../common/ui/Icon.vue'
-import ConfirmModal from '../common/modals/ConfirmModal.vue'
+import Icon from '../ui/Icon.vue'
+import ConfirmModal from '../modals/ConfirmModal.vue'
 import BBCodeEditor from '../editor/BBCodeEditor.vue'
 import BBCodeRenderer from '../editor/BBCodeRenderer.vue'
 import { toDatetimeLocal, normalizeForInput } from '../../utils/dates'

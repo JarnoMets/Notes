@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import type { List } from '../../types'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 defineProps<{
   list: List

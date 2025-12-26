@@ -63,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 defineProps<{
   title: string

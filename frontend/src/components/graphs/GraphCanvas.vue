@@ -346,7 +346,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { GraphNode, GraphEdge, NodeType, EdgeStyle } from '@/types/graph'
-import Icon from '@/components/common/ui/Icon.vue'
+import Icon from '@/components/ui/Icon.vue'
 import logger from '@/utils/logger'
 
 const props = defineProps<{

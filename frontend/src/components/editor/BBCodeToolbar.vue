@@ -151,7 +151,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 import { isTagActive as isTagActiveUtil } from '@/utils/bbcodeFormatter'
 
 const props = defineProps<{

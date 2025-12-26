@@ -44,7 +44,7 @@
 <script setup lang="ts">
 import type { NoteAttachment } from '../../types'
 import { formatFileSize, isImageMimeType, getFileIcon } from '../../composables'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 defineProps<{
   attachments: NoteAttachment[]

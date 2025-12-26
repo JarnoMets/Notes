@@ -59,7 +59,7 @@ import Draggable from 'vuedraggable'
 import type { Card, BoardLabel, ListWithCards } from '../../types'
 import KanbanListHeader from './KanbanListHeader.vue'
 import KanbanCard from './KanbanCard.vue'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 interface Props {
   lists: ListWithCards[]

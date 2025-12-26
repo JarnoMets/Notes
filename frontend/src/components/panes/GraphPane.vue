@@ -24,7 +24,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import GraphCanvas from '../common/ui/GraphCanvas.vue'
+import GraphCanvas from '../graphs/GraphCanvas.vue'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
 import type { GraphWithData, GraphNode } from '@/types'
 import { useExplorerStore } from '@/stores/explorer'

@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Card, BoardLabel } from '../../types'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   card: Card

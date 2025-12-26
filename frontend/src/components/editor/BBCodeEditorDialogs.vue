@@ -72,10 +72,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import FormModal from '../common/modals/FormModal.vue'
+import FormModal from '../modals/FormModal.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useExplorerStore } from '@/stores/explorer'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 // ...existing code...
 
