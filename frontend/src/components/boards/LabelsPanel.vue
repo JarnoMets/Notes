@@ -51,6 +51,15 @@
         </div>
       </div>
     </div>
+
+    <PromptModal
+      :visible="promptModal.visible"
+      title="Edit Label"
+      placeholder="Label name"
+      :initial-value="promptModal.initialValue"
+      @submit="handlePromptSubmit"
+      @cancel="promptModal.visible = false"
+    />
   </div>
 </template>
 
@@ -58,6 +67,7 @@
 import { ref } from 'vue'
 import type { BoardLabel } from '../../types'
 import Icon from '../common/ui/Icon.vue'
+import PromptModal from '../common/modals/PromptModal.vue'
 
 defineProps<{
   visible: boolean
@@ -76,11 +86,25 @@ const colorPalette = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1
 const newLabelName = ref('')
 const newLabelColor = ref('#e74c3c')
 
+const promptModal = ref({
+  visible: false,
+  label: null as BoardLabel | null,
+  initialValue: ''
+})
+
 function editLabel(label: BoardLabel) {
-  const newName = prompt('Edit label name:', label.name)
-  if (newName && newName.trim()) {
-    emit('edit', { ...label, name: newName.trim() })
+  promptModal.value = {
+    visible: true,
+    label,
+    initialValue: label.name
   }
+}
+
+function handlePromptSubmit(newName: string) {
+  if (promptModal.value.label && newName.trim()) {
+    emit('edit', { ...promptModal.value.label, name: newName.trim() })
+  }
+  promptModal.value.visible = false
 }
 
 function handleCreate() {

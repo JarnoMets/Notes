@@ -218,36 +218,57 @@ function insertTodo() {
 .editor-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  background: var(--bg-secondary);
+  gap: 0.125rem;
+  padding: 0.25rem 2rem;
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 32px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 0.25rem 1rem;
+    scrollbar-width: none;
+  }
+  
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .toolbar-group {
   display: flex;
-  gap: 2px;
+  gap: 1px;
   padding-right: 0.5rem;
   border-right: 1px solid var(--border-primary);
+  margin-right: 0.5rem;
 }
 
 .toolbar-group:last-child {
   border-right: none;
+  margin-right: 0;
+  padding-right: 0;
 }
 
 .toolbar-btn {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
+  background: transparent;
+  border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 12px;
-  color: var(--text-secondary);
-  transition: all 0.2s;
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: all 0.1s;
 }
 
 .toolbar-btn:hover {
@@ -256,13 +277,12 @@ function insertTodo() {
 }
 
 .toolbar-btn.is-active {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
 }
 
 .toolbar-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 

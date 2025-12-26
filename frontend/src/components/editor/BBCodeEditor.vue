@@ -421,13 +421,13 @@ async function handleDroppedImages(files: File[]) {
 
 .bbcode-textarea {
   flex: 1;
-  padding: 1.5rem 2rem;
+  padding: 0 2rem 2rem 2rem;
   background: var(--bg-primary);
   color: var(--text-primary);
   border: none;
-  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-  font-size: 14px;
-  line-height: 1.8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
   resize: none;
   outline: none;
   width: 100%;
@@ -438,9 +438,14 @@ async function handleDroppedImages(files: File[]) {
   transition: background-color 0.2s;
 }
 
+@media (max-width: 768px) {
+  .bbcode-textarea {
+    padding: 0 1rem 1rem 1rem;
+  }
+}
+
 .bbcode-textarea.drag-over {
   background-color: color-mix(in srgb, var(--accent) 5%, var(--bg-primary));
-  border: 2px dashed var(--accent);
 }
 
 .bbcode-textarea::placeholder {
@@ -453,45 +458,48 @@ async function handleDroppedImages(files: File[]) {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 1.5rem 2rem;
+  padding: 0 2rem 2rem 2rem;
   cursor: text;
   background: var(--bg-primary);
+}
+
+@media (max-width: 768px) {
+  .view-mode {
+    padding: 0 1rem 1rem 1rem;
+  }
 }
 
 .view-content {
   min-height: 100%;
   color: var(--text-primary);
-  line-height: 1.8;
+  line-height: 1.6;
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: pre-wrap;
   word-break: break-word;
+  font-size: 16px;
 }
 
 /* BBCode rendered styles */
 .view-content :deep(h1) {
-  font-size: 2.2em;
-  margin: 1.2em 0 0.6em;
+  font-size: 1.8em;
+  margin: 1.5em 0 0.5em;
   color: var(--text-primary);
   font-weight: 700;
   line-height: 1.2;
-  border-bottom: 2px solid var(--border-primary);
-  padding-bottom: 0.5em;
 }
 
 .view-content :deep(h2) {
-  font-size: 1.8em;
-  margin: 1em 0 0.5em;
+  font-size: 1.5em;
+  margin: 1.3em 0 0.5em;
   color: var(--text-primary);
   font-weight: 600;
   line-height: 1.3;
-  border-bottom: 1px solid var(--border-primary);
-  padding-bottom: 0.3em;
 }
 
 .view-content :deep(h3) {
-  font-size: 1.4em;
-  margin: 0.8em 0 0.4em;
+  font-size: 1.25em;
+  margin: 1.1em 0 0.4em;
   color: var(--text-primary);
   font-weight: 600;
   line-height: 1.3;

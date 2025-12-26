@@ -7,6 +7,15 @@ import logger from '@/utils/logger'
 const TOKEN_KEY = 'notes_auth_token'
 const USER_KEY = 'notes_user'
 
+function getStoredUser(): User | null {
+  try {
+    const stored = localStorage.getItem(USER_KEY)
+    return stored ? JSON.parse(stored) : null
+  } catch (e) {
+    return null
+  }
+}
+
 export interface StorageInfo {
   used: number
   limit: number
@@ -14,7 +23,7 @@ export interface StorageInfo {
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref<string | null>(localStorage.getItem(TOKEN_KEY))
-  const user = ref<User | null>(JSON.parse(localStorage.getItem(USER_KEY) || 'null'))
+  const user = ref<User | null>(getStoredUser())
   const loading = ref(false)
   const error = ref<string | null>(null)
   const storageInfo = ref<StorageInfo>({ used: 0, limit: 1073741824 })
@@ -129,6 +138,10 @@ export const useAuthStore = defineStore('auth', () => {
   if (typeof window !== 'undefined') {
     window.addEventListener('auth:force-logout', () => {
       clearAuth()
+      // Redirect to login page immediately when auth is cleared due to 401
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     })
   }
 

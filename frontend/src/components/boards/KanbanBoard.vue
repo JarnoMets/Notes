@@ -1,6 +1,6 @@
 <template>
   <div class="kanban-container">
-    <div class="lists-row" style="display: flex; align-items: flex-start; gap: 12px;">
+    <div class="lists-row">
       <Draggable v-model="listsModel" item-key="list.id" class="lists-wrapper" @end="onListsDragEnd" :animation="150" :handle="'.list-drag-handle'">
         <template #item="{ element: listWithCards }">
           <div
@@ -193,18 +193,18 @@ function onCardDropAtEnd(event: DragEvent, listId: string) {
 .kanban-container {
   flex: 1;
   overflow-x: auto;
-  padding: 1rem;
+  padding: 0 2rem 2rem 2rem;
 }
 
 .lists-row {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 1.5rem;
 }
 
 .lists-wrapper {
   display: flex;
-  gap: 1rem;
+  gap: 1.5rem;
   height: 100%;
   align-items: flex-start;
 }
@@ -212,12 +212,12 @@ function onCardDropAtEnd(event: DragEvent, listId: string) {
 .kanban-list {
   background: var(--bg-secondary);
   border-radius: 8px;
-  padding: 0.75rem;
-  min-width: 280px;
-  max-width: 280px;
+  padding: 1rem;
+  min-width: 300px;
+  max-width: 300px;
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 180px);
+  max-height: calc(100vh - 200px);
 }
 
 .cards-container {

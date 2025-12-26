@@ -103,17 +103,18 @@ function getLabelName(labelId: string): string {
 <style scoped>
 .kanban-card {
   position: relative;
-  background: var(--bg-tertiary);
+  background: var(--bg-primary);
   border: 1px solid var(--border-primary);
   border-radius: 6px;
   padding: 0.75rem;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .kanban-card:hover {
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 /* Small done badge */

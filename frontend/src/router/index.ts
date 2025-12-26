@@ -1,6 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import LoginView from '../views/LoginView.vue'
+import RegisterView from '../views/RegisterView.vue'
+import GoogleCallbackView from '../views/GoogleCallbackView.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -26,6 +29,24 @@ const routes: RouteRecordRaw[] = [
     name: 'calendar',
     component: () => import('../views/CalendarView.vue'),
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { guest: true }
+  },
+  {
+    path: '/register',
+    name: 'register',
+    component: RegisterView,
+    meta: { guest: true }
+  },
+  {
+    path: '/auth/google/callback',
+    name: 'google-callback',
+    component: GoogleCallbackView,
+    meta: { guest: true }
   }
 ]
 
