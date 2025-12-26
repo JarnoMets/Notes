@@ -60,25 +60,16 @@
         <h4 class="dropdown-title">Choose Theme</h4>
       </div>
       
-      <div class="theme-options">
+      <div class="theme-options" @mouseleave="revertTheme">
         <button 
           v-for="themeOption in themeStore.themes" 
           :key="themeOption.name"
           class="theme-option"
           :class="{ active: themeStore.currentTheme === themeOption.name }"
           @click="selectTheme(themeOption.name)"
+          @mouseenter="previewTheme(themeOption.name)"
         >
-          <div class="theme-swatch" :style="{ background: themeOption.colors.bgPrimary }">
-            <div class="swatch-accent" :style="{ background: themeOption.colors.accent }"></div>
-          </div>
-          <div class="theme-info">
-            <span class="theme-label">{{ themeOption.label }}</span>
-            <div class="theme-colors-preview">
-              <div class="color-dot" :style="{ background: themeOption.colors.accent }"></div>
-              <div class="color-dot" :style="{ background: themeOption.colors.success }"></div>
-              <div class="color-dot" :style="{ background: themeOption.colors.danger }"></div>
-            </div>
-          </div>
+          <span class="theme-label">{{ themeOption.label }}</span>
           <Icon v-if="themeStore.currentTheme === themeOption.name" name="check" :size="14" class="active-check" />
         </button>
       </div>
@@ -219,6 +210,21 @@ function toggleThemeSelector() {
 function selectTheme(themeName: string) {
   themeStore.setTheme(themeName as any)
   showThemeSelector.value = false
+}
+
+function previewTheme(themeName: string) {
+  const theme = themeStore.themes[themeName as any]
+  if (theme) {
+    const root = document.documentElement
+    Object.entries(theme.colors).forEach(([key, value]) => {
+      const kebabKey = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()
+      root.style.setProperty(`--${kebabKey}`, value as string)
+    })
+  }
+}
+
+function revertTheme() {
+  themeStore.applyTheme()
 }
 
 function handleLogout() {
@@ -841,47 +847,10 @@ onUnmounted(() => {
   color: var(--accent);
 }
 
-.theme-swatch {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--border-primary);
-  position: relative;
-  overflow: hidden;
-  flex-shrink: 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.swatch-accent {
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 50%;
-  height: 50%;
-  border-top-left-radius: 4px;
-}
-
-.theme-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .theme-label {
+  flex: 1;
   font-size: 0.85rem;
   font-weight: 600;
-}
-
-.theme-colors-preview {
-  display: flex;
-  gap: 4px;
-}
-
-.color-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
 }
 
 .active-check {
