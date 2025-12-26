@@ -352,16 +352,16 @@ pub async fn update_node(
             body.node_type.clone(),
             body.shape.clone(),
             body.label.clone(),
-            body.reference_id.clone().map(Some),
+            body.reference_id.clone(),
             body.x,
             body.y,
             body.width,
             body.height,
-            body.color.clone().map(Some),
-            body.border_color.clone().map(Some),
-            body.text_color.clone().map(Some),
-            body.font_size.map(Some),
-            body.metadata.clone().map(Some),
+            body.color.clone(),
+            body.border_color.clone(),
+            body.text_color.clone(),
+            body.font_size,
+            body.metadata.clone(),
         )
         .await
     {
@@ -483,10 +483,10 @@ pub async fn update_edge(
             body.target_node_id.clone(),
             body.edge_type.clone(),
             body.style.clone(),
-            body.label.clone().map(Some),
-            body.color.clone().map(Some),
-            body.thickness.map(Some),
-            body.metadata.clone().map(Some),
+            body.label.clone(),
+            body.color.clone(),
+            body.thickness,
+            body.metadata.clone(),
         )
         .await
     {

@@ -253,16 +253,16 @@ pub struct UpdateNodeRequest {
     pub node_type: Option<String>,
     pub shape: Option<String>,
     pub label: Option<String>,
-    pub reference_id: Option<String>,
+    pub reference_id: Option<Option<String>>,
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub width: Option<f64>,
     pub height: Option<f64>,
-    pub color: Option<String>,
-    pub border_color: Option<String>,
-    pub text_color: Option<String>,
-    pub font_size: Option<i32>,
-    pub metadata: Option<String>,
+    pub color: Option<Option<String>>,
+    pub border_color: Option<Option<String>>,
+    pub text_color: Option<Option<String>>,
+    pub font_size: Option<Option<i32>>,
+    pub metadata: Option<Option<String>>,
 }
 
 /// Edge/connection type
@@ -364,10 +364,10 @@ pub struct UpdateEdgeRequest {
     pub target_node_id: Option<String>,
     pub edge_type: Option<String>,
     pub style: Option<String>,
-    pub label: Option<String>,
-    pub color: Option<String>,
-    pub thickness: Option<i32>,
-    pub metadata: Option<String>,
+    pub label: Option<Option<String>>,
+    pub color: Option<Option<String>>,
+    pub thickness: Option<Option<i32>>,
+    pub metadata: Option<Option<String>>,
 }
 
 /// Graph tree with folders and graphs

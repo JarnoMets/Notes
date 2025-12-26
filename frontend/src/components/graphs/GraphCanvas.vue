@@ -145,15 +145,23 @@
             />
             
             <!-- Node Label -->
-            <text 
-              text-anchor="middle" 
-              dominant-baseline="middle"
-              :fill="node.text_color || 'var(--text-primary)'"
-              :font-size="node.font_size || 14"
-              style="pointer-events: none; user-select: none;"
+            <foreignObject
+              :x="-node.width / 2 + 5"
+              :y="-node.height / 2 + 5"
+              :width="node.width - 10"
+              :height="node.height - 10"
+              style="pointer-events: none;"
             >
-              {{ truncateLabel(node.label, node.width) }}
-            </text>
+              <div 
+                class="node-label-container"
+                :style="{ 
+                  color: node.text_color || getContrastColor(node.color),
+                  fontSize: (node.font_size || 14) + 'px'
+                }"
+              >
+                {{ node.label }}
+              </div>
+            </foreignObject>
             
             <!-- Type Icon (if linked) -->
             <g v-if="node.node_type === 'note'" transform="translate(-8, -25)">
@@ -519,14 +527,22 @@ function getMarkerEnd(edge: GraphEdge): string {
   return 'none'
 }
 
-function truncateLabel(label: string, width: number): string {
-  if (!label) return ''
-  const charWidth = 8 // Approximate
-  const maxChars = Math.floor((width - 10) / charWidth)
-  if (label.length > maxChars) {
-    return label.substring(0, maxChars - 1) + '...'
-  }
-  return label
+function getContrastColor(hexColor?: string | null): string {
+  if (!hexColor) return 'var(--text-primary)'
+  
+  // If it's a CSS variable, we can't easily calculate contrast
+  if (hexColor.startsWith('var')) return 'var(--text-primary)'
+  
+  // Convert hex to RGB
+  const hex = hexColor.replace('#', '')
+  const r = parseInt(hex.substring(0, 2), 16)
+  const g = parseInt(hex.substring(2, 4), 16)
+  const b = parseInt(hex.substring(4, 6), 16)
+  
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+  
+  return luminance > 0.5 ? '#000000' : '#ffffff'
 }
 
 function getHexagonPath(width: number, height: number): string {
@@ -1047,6 +1063,19 @@ function onDrop(event: DragEvent) {
 
 .graph-edge:hover {
   stroke-width: 3;
+}
+
+.node-label-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  word-break: break-word;
+  overflow: hidden;
+  line-height: 1.2;
+  user-select: none;
 }
 
 .graph-controls {
