@@ -45,6 +45,10 @@
       <rect width="100%" height="100%" fill="url(#grid)" />
 
       <g :transform="`translate(${transform.x}, ${transform.y}) scale(${transform.k})`">
+        <!-- Origin Lines -->
+        <line :x1="-100000" y1="0" :x2="100000" y2="0" stroke="var(--border-primary)" stroke-width="2" opacity="0.6" />
+        <line x1="0" :y1="-100000" x2="0" :y2="100000" stroke="var(--border-primary)" stroke-width="2" opacity="0.6" />
+
         <!-- Edges -->
         <g class="edges-layer">
           <template v-for="edge in edges" :key="edge.id">
