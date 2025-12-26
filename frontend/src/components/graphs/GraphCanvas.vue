@@ -40,14 +40,17 @@
         </marker>
       </defs>
       
-      <!-- Background Grid -->
-      <rect width="100%" height="100%" fill="url(#grid-fine)" />
-      <rect width="100%" height="100%" fill="url(#grid)" />
+      <!-- Background Grid (Static) -->
+      <rect width="100%" height="100%" fill="var(--bg-primary)" />
 
       <g :transform="`translate(${transform.x}, ${transform.y}) scale(${transform.k})`">
+        <!-- Background Grid (Scaling) -->
+        <rect x="-50000" y="-50000" width="100000" height="100000" fill="url(#grid-fine)" />
+        <rect x="-50000" y="-50000" width="100000" height="100000" fill="url(#grid)" />
+
         <!-- Origin Lines -->
-        <line :x1="-100000" y1="0" :x2="100000" y2="0" stroke="var(--border-primary)" stroke-width="2" opacity="0.6" />
-        <line x1="0" :y1="-100000" x2="0" :y2="100000" stroke="var(--border-primary)" stroke-width="2" opacity="0.6" />
+        <line :x1="-100000" y1="0" :x2="100000" y2="0" stroke="var(--text-muted)" stroke-width="2" opacity="0.4" />
+        <line x1="0" :y1="-100000" x2="0" :y2="100000" stroke="var(--text-muted)" stroke-width="2" opacity="0.4" />
 
         <!-- Edges -->
         <g class="edges-layer">
@@ -460,6 +463,10 @@ function handleKeyDown(event: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeyDown)
+  // Center the origin on mount
+  setTimeout(() => {
+    centerOrigin()
+  }, 50)
 })
 
 onUnmounted(() => {
@@ -895,6 +902,13 @@ function zoomOut() {
 
 function resetZoom() {
   transform.value = { x: 0, y: 0, k: 1 }
+}
+
+function centerOrigin() {
+  const center = getCenter()
+  transform.value.x = center.x
+  transform.value.y = center.y
+  transform.value.k = 1
 }
 
 function getCenter() {
