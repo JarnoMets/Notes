@@ -3,6 +3,10 @@
     <div v-if="loading" class="loading">Loading graph...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="graphData" class="graph-container">
+      <div class="graph-status" :class="{ syncing: pendingSyncs > 0 }">
+        <Icon :name="pendingSyncs > 0 ? 'refresh' : 'check'" :size="14" />
+        <span>{{ pendingSyncs > 0 ? 'Saving...' : 'Saved' }}</span>
+      </div>
       <GraphCanvas
         :nodes="graphData.nodes"
         :edges="graphData.edges"
@@ -55,6 +59,7 @@ import { ref, onMounted, watch } from 'vue'
 import GraphCanvas from '../graphs/GraphCanvas.vue'
 import PromptModal from '../modals/PromptModal.vue'
 import ResourceSelectModal from '../modals/ResourceSelectModal.vue'
+import Icon from '../ui/Icon.vue'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
 import type { GraphWithData, GraphNode } from '@/types'
 import { useExplorerStore } from '@/stores/explorer'
@@ -69,6 +74,18 @@ const explorerStore = useExplorerStore()
 const graphData = ref<GraphWithData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const pendingSyncs = ref(0)
+
+async function withSync(fn: () => Promise<any>) {
+  pendingSyncs.value++
+  try {
+    await fn()
+  } finally {
+    setTimeout(() => {
+      pendingSyncs.value--
+    }, 500)
+  }
+}
 
 const bubbleModal = ref({
   visible: false,
@@ -119,11 +136,13 @@ async function handleNodeMove(nodeId: string, x: number, y: number) {
     node.y = y
   }
   
-  try {
-    await graphNodesApi.update(graphData.value.graph.id, nodeId, { x, y })
-  } catch (e) {
-    logger.error('Failed to update node position', e)
-  }
+  withSync(async () => {
+    try {
+      await graphNodesApi.update(graphData.value!.graph.id, nodeId, { x, y })
+    } catch (e) {
+      logger.error('Failed to update node position', e)
+    }
+  })
 }
 
 async function handleCreateNode(x: number, y: number, type: any, referenceId?: string) {
@@ -178,35 +197,39 @@ async function handleResourceSelect(itemId: string) {
 async function createNode(x: number, y: number, type: any, label: string, referenceId?: string) {
   if (!graphData.value) return
 
-  const response = await graphNodesApi.create(graphData.value.graph.id, {
-    node_type: type,
-    shape: type === 'note' || type === 'board' ? 'rectangle' : 'circle',
-    label: label,
-    reference_id: referenceId,
-    x,
-    y,
-    width: type === 'note' || type === 'board' ? 140 : 80,
-    height: type === 'note' || type === 'board' ? 60 : 80
+  withSync(async () => {
+    const response = await graphNodesApi.create(graphData.value!.graph.id, {
+      node_type: type,
+      shape: type === 'note' || type === 'board' ? 'rectangle' : 'circle',
+      label: label,
+      reference_id: referenceId,
+      x,
+      y,
+      width: type === 'note' || type === 'board' ? 140 : 80,
+      height: type === 'note' || type === 'board' ? 60 : 80
+    })
+    
+    graphData.value!.nodes.push(response.data)
   })
-  
-  graphData.value.nodes.push(response.data)
 }
 
 async function handleCreateEdge(sourceId: string, targetId: string) {
   if (!graphData.value) return
   
-  try {
-    const response = await graphEdgesApi.create(graphData.value.graph.id, {
-      source_node_id: sourceId,
-      target_node_id: targetId,
-      edge_type: 'arrow',
-      style: 'solid'
-    })
-    
-    graphData.value.edges.push(response.data)
-  } catch (e) {
-    logger.error('Failed to create edge', e)
-  }
+  withSync(async () => {
+    try {
+      const response = await graphEdgesApi.create(graphData.value!.graph.id, {
+        source_node_id: sourceId,
+        target_node_id: targetId,
+        edge_type: 'arrow',
+        style: 'solid'
+      })
+      
+      graphData.value!.edges.push(response.data)
+    } catch (e) {
+      logger.error('Failed to create edge', e)
+    }
+  })
 }
 
 function handleNodeSelect(_nodeId: string | null) {
@@ -236,27 +259,40 @@ function handleOpenNode(node: GraphNode) {
 async function handleDeleteNode(nodeId: string) {
   if (!graphData.value) return
   
-  try {
-    await graphNodesApi.delete(graphData.value.graph.id, nodeId)
-    graphData.value.nodes = graphData.value.nodes.filter(n => n.id !== nodeId)
-    // Also remove connected edges
-    graphData.value.edges = graphData.value.edges.filter(e => 
-      e.source_node_id !== nodeId && e.target_node_id !== nodeId
-    )
-  } catch (e) {
-    logger.error('Failed to delete node', e)
-  }
+  const originalNodes = [...graphData.value.nodes]
+  const originalEdges = [...graphData.value.edges]
+
+  // Optimistic delete
+  graphData.value.nodes = graphData.value.nodes.filter(n => n.id !== nodeId)
+  graphData.value.edges = graphData.value.edges.filter(e => 
+    e.source_node_id !== nodeId && e.target_node_id !== nodeId
+  )
+
+  withSync(async () => {
+    try {
+      await graphNodesApi.delete(graphData.value!.graph.id, nodeId)
+    } catch (e) {
+      logger.error('Failed to delete node', e)
+      graphData.value!.nodes = originalNodes
+      graphData.value!.edges = originalEdges
+    }
+  })
 }
 
 async function handleDeleteEdge(edgeId: string) {
   if (!graphData.value) return
   
-  try {
-    await graphEdgesApi.delete(graphData.value.graph.id, edgeId)
-    graphData.value.edges = graphData.value.edges.filter(e => e.id !== edgeId)
-  } catch (e) {
-    logger.error('Failed to delete edge', e)
-  }
+  const originalEdges = [...graphData.value.edges]
+  graphData.value.edges = graphData.value.edges.filter(e => e.id !== edgeId)
+
+  withSync(async () => {
+    try {
+      await graphEdgesApi.delete(graphData.value!.graph.id, edgeId)
+    } catch (e) {
+      logger.error('Failed to delete edge', e)
+      graphData.value!.edges = originalEdges
+    }
+  })
 }
 
 async function handleRenameNode(nodeId: string) {
@@ -280,15 +316,20 @@ async function handleRenameSubmit(newLabel: string) {
   if (!node) return
   
   renameModal.value.visible = false
-  
   if (newLabel === node.label) return
   
-  try {
-    const response = await graphNodesApi.update(graphData.value.graph.id, nodeId, { label: newLabel })
-    node.label = response.data.label
-  } catch (e) {
-    logger.error('Failed to rename node', e)
-  }
+  const originalLabel = node.label
+  node.label = newLabel
+
+  withSync(async () => {
+    try {
+      const response = await graphNodesApi.update(graphData.value!.graph.id, nodeId, { label: newLabel })
+      node.label = response.data.label
+    } catch (e) {
+      logger.error('Failed to rename node', e)
+      node.label = originalLabel
+    }
+  })
 }
 
 async function handleUpdateNode(nodeId: string, updates: any) {
@@ -297,13 +338,18 @@ async function handleUpdateNode(nodeId: string, updates: any) {
   const node = graphData.value.nodes.find(n => n.id === nodeId)
   if (!node) return
   
-  try {
-    const response = await graphNodesApi.update(graphData.value.graph.id, nodeId, updates)
-    // Update local state
-    Object.assign(node, response.data)
-  } catch (e) {
-    logger.error('Failed to update node', e)
-  }
+  const originalState = { ...node }
+  Object.assign(node, updates)
+
+  withSync(async () => {
+    try {
+      const response = await graphNodesApi.update(graphData.value!.graph.id, nodeId, updates)
+      Object.assign(node, response.data)
+    } catch (e) {
+      logger.error('Failed to update node', e)
+      Object.assign(node, originalState)
+    }
+  })
 }
 
 async function handleUpdateEdge(edgeId: string, updates: any) {
@@ -312,13 +358,18 @@ async function handleUpdateEdge(edgeId: string, updates: any) {
   const edge = graphData.value.edges.find(e => e.id === edgeId)
   if (!edge) return
   
-  try {
-    const response = await graphEdgesApi.update(graphData.value.graph.id, edgeId, updates)
-    // Update local state
-    Object.assign(edge, response.data)
-  } catch (e) {
-    logger.error('Failed to update edge', e)
-  }
+  const originalState = { ...edge }
+  Object.assign(edge, updates)
+
+  withSync(async () => {
+    try {
+      const response = await graphEdgesApi.update(graphData.value!.graph.id, edgeId, updates)
+      Object.assign(edge, response.data)
+    } catch (e) {
+      logger.error('Failed to update edge', e)
+      Object.assign(edge, originalState)
+    }
+  })
 }
 </script>
 
@@ -336,6 +387,44 @@ async function handleUpdateEdge(edgeId: string, updates: any) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
+}
+
+.graph-status {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: all 0.3s ease;
+  opacity: 0.8;
+}
+
+.graph-status.syncing {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.graph-status .icon {
+  animation: none;
+}
+
+.graph-status.syncing .icon {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .loading, .error {

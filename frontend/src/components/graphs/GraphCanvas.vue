@@ -19,10 +19,10 @@
       <defs>
         <!-- Grid Pattern -->
         <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="var(--border-primary)" stroke-width="0.5" opacity="0.3"/>
+          <path d="M 40 0 L 0 0 L 0 40" fill="none" stroke="var(--border-primary)" stroke-width="1" opacity="0.4" shape-rendering="crispEdges"/>
         </pattern>
         <pattern id="grid-fine" width="10" height="10" patternUnits="userSpaceOnUse">
-          <path d="M 10 0 L 0 0 0 10" fill="none" stroke="var(--border-primary)" stroke-width="0.2" opacity="0.2"/>
+          <path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="var(--border-primary)" stroke-width="0.5" opacity="0.2" shape-rendering="crispEdges"/>
         </pattern>
 
         <!-- Arrow markers -->
@@ -49,8 +49,8 @@
         <rect x="-50000" y="-50000" width="100000" height="100000" fill="url(#grid)" />
 
         <!-- Origin Lines -->
-        <line :x1="-100000" y1="0" :x2="100000" y2="0" stroke="var(--text-muted)" stroke-width="2" opacity="0.4" />
-        <line x1="0" :y1="-100000" x2="0" :y2="100000" stroke="var(--text-muted)" stroke-width="2" opacity="0.4" />
+        <line :x1="-100000" y1="0" :x2="100000" y2="0" stroke="var(--text-muted)" stroke-width="2" opacity="0.6" shape-rendering="crispEdges" vector-effect="non-scaling-stroke" />
+        <line x1="0" :y1="-100000" x2="0" :y2="100000" stroke="var(--text-muted)" stroke-width="2" opacity="0.6" shape-rendering="crispEdges" vector-effect="non-scaling-stroke" />
 
         <!-- Edges -->
         <g class="edges-layer">
@@ -901,13 +901,13 @@ function zoomOut() {
 }
 
 function resetZoom() {
-  transform.value = { x: 0, y: 0, k: 1 }
+  centerOrigin()
 }
 
 function centerOrigin() {
   const center = getCenter()
-  transform.value.x = center.x
-  transform.value.y = center.y
+  transform.value.x = Math.round(center.x)
+  transform.value.y = Math.round(center.y)
   transform.value.k = 1
 }
 
