@@ -55,7 +55,7 @@ pub async fn update_graph_folder(
 ) -> impl Responder {
     let user_id = require_auth!(req, state);
     let id = path.into_inner();
-    let parent_id = body.parent_id.clone().map(Some);
+    let parent_id = body.parent_id.clone();
 
     match state
         .db
@@ -193,7 +193,7 @@ pub async fn update_graph(
 ) -> impl Responder {
     let user_id = require_auth!(req, state);
     let id = path.into_inner();
-    let folder_id = body.folder_id.clone().map(Some);
+    let folder_id = body.folder_id.clone();
 
     match state
         .db

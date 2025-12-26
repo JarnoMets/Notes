@@ -1,8 +1,17 @@
 //! Graph-related models for visual graph/network diagrams
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use uuid::Uuid;
+
+/// Helper for deserializing Option<Option<T>> to distinguish between missing and null
+fn deserialize_double_option<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::<T>::deserialize(deserializer)?))
+}
 
 /// Graph folder for organizing graphs hierarchically
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
@@ -46,7 +55,8 @@ pub struct CreateGraphFolderRequest {
 #[derive(Debug, Deserialize)]
 pub struct UpdateGraphFolderRequest {
     pub name: Option<String>,
-    pub parent_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub parent_id: Option<Option<String>>,
     pub position: Option<i32>,
     pub is_important: Option<bool>,
     pub is_urgent: Option<bool>,
@@ -111,7 +121,8 @@ pub struct CreateGraphRequest {
 pub struct UpdateGraphRequest {
     pub name: Option<String>,
     pub description: Option<String>,
-    pub folder_id: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
+    pub folder_id: Option<Option<String>>,
     pub position: Option<i32>,
     pub is_important: Option<bool>,
     pub is_urgent: Option<bool>,
@@ -253,15 +264,21 @@ pub struct UpdateNodeRequest {
     pub node_type: Option<String>,
     pub shape: Option<String>,
     pub label: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub reference_id: Option<Option<String>>,
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub width: Option<f64>,
     pub height: Option<f64>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub border_color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub text_color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub font_size: Option<Option<i32>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub metadata: Option<Option<String>>,
 }
 
@@ -364,9 +381,13 @@ pub struct UpdateEdgeRequest {
     pub target_node_id: Option<String>,
     pub edge_type: Option<String>,
     pub style: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub label: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub color: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub thickness: Option<Option<i32>>,
+    #[serde(default, deserialize_with = "deserialize_double_option")]
     pub metadata: Option<Option<String>>,
 }
 
