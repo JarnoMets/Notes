@@ -7,37 +7,39 @@
       </div>
       <div class="modal-body">
         <form @submit.prevent="handleSubmit">
-          <div v-for="field in fields" :key="field.name" class="form-field">
-            <label :for="field.name">{{ field.label }}</label>
-            <input
-              v-if="field.type === 'text' || field.type === 'url'"
-              :id="field.name"
-              v-model="formData[field.name]"
-              :type="field.type"
-              :placeholder="field.placeholder"
-              :required="field.required"
-              class="form-input"
-            />
-            <textarea
-              v-else-if="field.type === 'textarea'"
-              :id="field.name"
-              v-model="formData[field.name]"
-              :placeholder="field.placeholder"
-              :required="field.required"
-              class="form-textarea"
-            ></textarea>
-            <select
-              v-else-if="field.type === 'select'"
-              :id="field.name"
-              v-model="formData[field.name]"
-              :required="field.required"
-              class="form-select"
-            >
-              <option v-for="option in field.options" :key="option.value" :value="option.value">
-                {{ option.label }}
-              </option>
-            </select>
-          </div>
+          <template v-for="field in fields" :key="field.name">
+            <div v-if="!field.showIf || field.showIf(formData)" class="form-field">
+              <label :for="field.name">{{ field.label }}</label>
+              <input
+                v-if="field.type === 'text' || field.type === 'url'"
+                :id="field.name"
+                v-model="formData[field.name]"
+                :type="field.type"
+                :placeholder="field.placeholder"
+                :required="field.required"
+                class="form-input"
+              />
+              <textarea
+                v-else-if="field.type === 'textarea'"
+                :id="field.name"
+                v-model="formData[field.name]"
+                :placeholder="field.placeholder"
+                :required="field.required"
+                class="form-textarea"
+              ></textarea>
+              <select
+                v-else-if="field.type === 'select'"
+                :id="field.name"
+                v-model="formData[field.name]"
+                :required="field.required"
+                class="form-select"
+              >
+                <option v-for="option in field.options" :key="option.value" :value="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </div>
+          </template>
           <div class="modal-actions">
             <button type="button" @click="$emit('close')" class="btn btn-secondary">Cancel</button>
             <button type="submit" class="btn btn-primary">{{ submitLabel }}</button>
@@ -58,6 +60,7 @@ interface FormField {
   placeholder?: string
   required?: boolean
   options?: { value: string; label: string }[]
+  showIf?: (data: Record<string, string>) => boolean
 }
 
 interface Props {

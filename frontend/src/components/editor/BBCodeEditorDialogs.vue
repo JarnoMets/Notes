@@ -73,13 +73,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import FormModal from '../modals/FormModal.vue'
-import { useNotesStore } from '@/stores/notes'
 import { useExplorerStore } from '@/stores/explorer'
-import Icon from '../ui/Icon.vue'
+import type { NoteAttachment } from '@/types'
 
-// ...existing code...
+const props = defineProps<{
+  textarea: HTMLTextAreaElement | null
+  attachments?: NoteAttachment[]
+}>()
 
-const notesStore = useNotesStore()
+const emit = defineEmits<{
+  'insert-tag': [tag: string, content: string]
+}>()
 const explorerStore = useExplorerStore()
 
 // Dialog visibility states

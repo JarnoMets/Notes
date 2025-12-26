@@ -563,10 +563,10 @@ impl Database {
     /// Get total storage used by a user (sum of all attachment sizes)
     pub async fn get_user_storage_used(&self, user_id: &str) -> DbResult<i64> {
         let result = sqlx::query_scalar::<_, i64>(
-            r#"SELECT COALESCE(SUM(na.size), 0) 
-               FROM note_attachments na 
-               JOIN notes n ON na.note_id = n.id 
-               WHERE n.user_id = $1"#
+            r#"SELECT (
+                (SELECT COALESCE(SUM(size), 0) FROM note_attachments na JOIN notes n ON na.note_id = n.id WHERE n.user_id = $1) +
+                (SELECT COALESCE(SUM(ca.size), 0) FROM card_attachments ca JOIN cards c ON ca.card_id = c.id JOIN lists l ON c.list_id = l.id JOIN boards b ON l.board_id = b.id WHERE b.user_id = $1)
+            )::bigint"#
         )
         .bind(user_id)
         .fetch_one(&self.pool)

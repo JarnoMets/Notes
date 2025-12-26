@@ -1,4 +1,3 @@
-import { AxiosResponse } from 'axios'
 import api from './client'
 
 export function createCrudApi<T, CreateT = any, UpdateT = any>(baseUrl: string) {
@@ -11,11 +10,11 @@ export function createCrudApi<T, CreateT = any, UpdateT = any>(baseUrl: string) 
   }
 }
 
-export function createTreeItemApi<T, CreateT = any, UpdateT = any>(baseUrl: string, folderKey: 'folder_id' | 'parent_id' = 'folder_id') {
+export function createTreeItemApi<T, CreateT = any, UpdateT = any, TreeT = any>(baseUrl: string, _folderKey: 'folder_id' | 'parent_id' = 'folder_id') {
   const crud = createCrudApi<T, CreateT, UpdateT>(baseUrl)
   return {
     ...crud,
-    getTree: () => api.get(`${baseUrl}/tree`),
+    getTree: () => api.get<TreeT>(`${baseUrl}/tree`),
     move: (id: string, data: { [key: string]: any; position: number }) => 
       api.post<T>(`${baseUrl}/${id}/move`, data)
   }

@@ -560,12 +560,12 @@ async function handlePromptSubmit(name: string) {
   } else if (action === 'folder') {
     await explorerStore.createFolder(name, parentId)
   } else if (action === 'board') {
-    const board = await explorerStore.createBoard(name, undefined, '#3498db', parentId)
+    const board = await explorerStore.createBoard(name, parentId)
     if (board) openBoard(board.id)
   } else if (action === 'board-folder') {
     await explorerStore.createBoardFolder(name, parentId)
   } else if (action === 'graph') {
-    const graph = await explorerStore.createGraph(name, undefined, parentId)
+    const graph = await explorerStore.createGraph(name, parentId)
     if (graph) openGraph(graph.id)
   } else if (action === 'graph-folder') {
     await explorerStore.createGraphFolder(name, parentId)

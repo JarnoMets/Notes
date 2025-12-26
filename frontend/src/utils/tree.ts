@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { type Ref } from 'vue'
 import logger from './logger'
 
 export interface TreeItem {
@@ -12,7 +12,7 @@ export interface TreeItem {
   children: TreeItem[]
 }
 
-export function useTreeState<T extends { id: string; name: string; parent_id?: string | null; folder_id?: string | null; position?: number; is_important?: boolean; is_urgent?: boolean }>(
+export function useTreeState<T extends { id: string; parent_id?: string | null; folder_id?: string | null; position?: number; is_important?: boolean; is_urgent?: boolean }>(
   itemsRef: Ref<T[]>,
   foldersRef: Ref<any[]>,
   expandedFoldersRef: Ref<Set<string>>,
