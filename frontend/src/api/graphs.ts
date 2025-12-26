@@ -9,7 +9,7 @@ import type {
 export const graphsApi = {
   ...createTreeItemApi<Graph, any, any, GraphsTree>('/graphs', 'folder_id'),
   
-  getWithData: (id: string) => api.get<GraphWithData>(`/graphs/${id}/data`),
+  getWithData: (id: string) => api.get<GraphWithData>(`/graphs/${id}`),
 
   nodes: {
     create: (graphId: string, data: CreateNodeRequest) => 

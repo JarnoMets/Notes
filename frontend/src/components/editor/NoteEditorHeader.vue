@@ -1,18 +1,6 @@
 <template>
   <div class="editor-header">
     <div class="header-left">
-      <h2 class="note-title" @click="startEditingTitle">
-        {{ note.title }}
-      </h2>
-      <input
-        v-if="isEditingTitle"
-        ref="titleInput"
-        v-model="editedTitle"
-        class="title-input"
-        @blur="saveTitle"
-        @keydown.enter="saveTitle"
-        @keydown.escape="cancelEditTitle"
-      />
     </div>
     <div class="header-actions">
       <button
@@ -67,54 +55,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref } from 'vue'
 import type { NoteWithAttachments } from '@/types'
 import Icon from '../ui/Icon.vue'
 
-const props = defineProps<{
+defineProps<{
   note: NoteWithAttachments
   isEditing: boolean
-  isEditingTitle: boolean
   showAttachments: boolean
 }>()
 
 const emit = defineEmits<{
   'update:isEditing': [value: boolean]
-  'update:isEditingTitle': [value: boolean]
   'update:showAttachments': [value: boolean]
-  'update:title': [newTitle: string]
   'duplicate-note': []
   'export-note': []
   'confirm-delete-note': []
 }>()
 
-const editedTitle = ref('')
 const showMenu = ref(false)
 const menuWrapper = ref<HTMLElement | null>(null)
-const titleInput = ref<HTMLInputElement | null>(null)
-
-function startEditingTitle() {
-  editedTitle.value = props.note.title || ''
-  emit('update:isEditingTitle', true)
-  nextTick(() => {
-    titleInput.value?.focus()
-    titleInput.value?.select()
-  })
-}
-
-function saveTitle() {
-  if (!props.isEditingTitle) return
-  const newTitle = editedTitle.value.trim()
-  if (newTitle && newTitle !== props.note.title) {
-    emit('update:title', newTitle)
-  }
-  emit('update:isEditingTitle', false)
-}
-
-function cancelEditTitle() {
-  emit('update:isEditingTitle', false)
-  editedTitle.value = ''
-}
 
 function toggleMenu() {
   showMenu.value = !showMenu.value

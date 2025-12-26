@@ -4,12 +4,9 @@
     <NoteEditorHeader
       :note="note"
       :is-editing="isEditing"
-      :is-editing-title="isEditingTitle"
       :show-attachments="showAttachments"
       @update:is-editing="isEditing = $event"
-      @update:is-editing-title="isEditingTitle = $event"
       @update:show-attachments="showAttachments = $event"
-      @update:title="handleTitleUpdate"
       @duplicate-note="duplicateNote"
       @export-note="exportNote"
       @confirm-delete-note="confirmDeleteNote"
@@ -119,7 +116,6 @@ const emit = defineEmits<{
 const notesStore = useNotesStore()
 const note = ref<NoteWithAttachments | null>(null)
 const isEditing = ref(false)
-const isEditingTitle = ref(false)
 const showAttachments = ref(false)
 const isDirty = ref(false)
 const previousContent = ref<string>('')
@@ -160,12 +156,6 @@ async function loadNote() {
     emit('dirty', false)
     isEditing.value = false
   }
-}
-
-function handleTitleUpdate(newTitle: string) {
-  if (!note.value) return
-  note.value.title = newTitle
-  saveNote()
 }
 
 function handleContentUpdate(newContent: string) {
