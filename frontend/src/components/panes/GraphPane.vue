@@ -19,12 +19,33 @@
         @update-edge="handleUpdateEdge"
       />
     </div>
+
+    <!-- Local Prompt Modal for Bubbles -->
+    <PromptModal
+      :visible="bubbleModal.visible"
+      title="New Bubble"
+      placeholder="Enter bubble label..."
+      confirm-text="Create"
+      @submit="handleBubbleSubmit"
+      @cancel="bubbleModal.visible = false"
+    />
+
+    <PromptModal
+      :visible="renameModal.visible"
+      title="Rename Node"
+      placeholder="Enter new label..."
+      :initial-value="renameModal.initialValue"
+      confirm-text="Rename"
+      @submit="handleRenameSubmit"
+      @cancel="renameModal.visible = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import GraphCanvas from '../graphs/GraphCanvas.vue'
+import PromptModal from '../modals/PromptModal.vue'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
 import type { GraphWithData, GraphNode } from '@/types'
 import { useExplorerStore } from '@/stores/explorer'
@@ -39,6 +60,18 @@ const explorerStore = useExplorerStore()
 const graphData = ref<GraphWithData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const bubbleModal = ref({
+  visible: false,
+  x: 0,
+  y: 0
+})
+
+const renameModal = ref({
+  visible: false,
+  nodeId: '',
+  initialValue: ''
+})
 
 async function fetchGraph() {
   if (!props.graphId) return
@@ -92,26 +125,36 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
         if (board) label = board.name
       }
     } else if (type === 'bubble') {
-      const input = prompt('Enter bubble label:', 'New Bubble')
-      if (input === null) return // Cancelled
-      label = input || 'New Bubble'
+      bubbleModal.value = { visible: true, x, y }
+      return // Wait for modal submit
     }
     
-    const response = await graphNodesApi.create(graphData.value.graph.id, {
-      node_type: type,
-      shape: type === 'note' || type === 'board' ? 'rectangle' : 'circle',
-      label: label,
-      reference_id: referenceId,
-      x,
-      y,
-      width: type === 'note' || type === 'board' ? 140 : 80,
-      height: type === 'note' || type === 'board' ? 60 : 80
-    })
-    
-    graphData.value.nodes.push(response.data)
+    await createNode(x, y, type, label, referenceId)
   } catch (e) {
     logger.error('Failed to create node', e)
   }
+}
+
+async function handleBubbleSubmit(label: string) {
+  bubbleModal.value.visible = false
+  await createNode(bubbleModal.value.x, bubbleModal.value.y, 'bubble', label)
+}
+
+async function createNode(x: number, y: number, type: any, label: string, referenceId?: string) {
+  if (!graphData.value) return
+
+  const response = await graphNodesApi.create(graphData.value.graph.id, {
+    node_type: type,
+    shape: type === 'note' || type === 'board' ? 'rectangle' : 'circle',
+    label: label,
+    reference_id: referenceId,
+    x,
+    y,
+    width: type === 'note' || type === 'board' ? 140 : 80,
+    height: type === 'note' || type === 'board' ? 60 : 80
+  })
+  
+  graphData.value.nodes.push(response.data)
 }
 
 async function handleCreateEdge(sourceId: string, targetId: string) {
@@ -187,8 +230,23 @@ async function handleRenameNode(nodeId: string) {
   const node = graphData.value.nodes.find(n => n.id === nodeId)
   if (!node) return
   
-  const newLabel = prompt('Enter new label:', node.label)
-  if (newLabel === null || newLabel === node.label) return
+  renameModal.value = {
+    visible: true,
+    nodeId,
+    initialValue: node.label
+  }
+}
+
+async function handleRenameSubmit(newLabel: string) {
+  if (!graphData.value) return
+  
+  const nodeId = renameModal.value.nodeId
+  const node = graphData.value.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  renameModal.value.visible = false
+  
+  if (newLabel === node.label) return
   
   try {
     const response = await graphNodesApi.update(graphData.value.graph.id, nodeId, { label: newLabel })
