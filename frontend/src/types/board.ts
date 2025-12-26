@@ -51,3 +51,8 @@ export interface BoardWithLists {
   labels: BoardLabel[]
   automations: AutomationRule[]
 }
+
+export interface BoardsTree {
+  folders: BoardFolder[]
+  boards: Board[]
+}

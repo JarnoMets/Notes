@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Note, NoteFolder, NotesTree, NoteWithAttachments } from '../types'
-import { notesApi, foldersApi } from '../api'
+import type { Note, NoteWithAttachments } from '../types'
+import { notesApi } from '../api'
 import logger from '@/utils/logger'
 import { useExplorerStore } from './explorer'
 
@@ -355,6 +355,24 @@ export const useNotesStore = defineStore('notes', () => {
     splitDirection.value = null
   }
 
+  async function createNote(title: string, folderId: string | null = null) {
+    const explorerStore = useExplorerStore()
+    return await explorerStore.createNote(title, folderId)
+  }
+
+  async function deleteNote(id: string) {
+    const explorerStore = useExplorerStore()
+    await explorerStore.deleteNote(id)
+    
+    // Close any tabs with this note
+    panes.value.forEach(pane => {
+      const tab = pane.tabs.find(t => t.noteId === id)
+      if (tab) {
+        closeTab(tab.id, pane.id)
+      }
+    })
+  }
+
   return {
     // State
     panes,
@@ -369,6 +387,8 @@ export const useNotesStore = defineStore('notes', () => {
     // Actions
     fetchNote,
     updateNote,
+    createNote,
+    deleteNote,
     invalidateNoteCache,
     undoNote,
     redoNote,

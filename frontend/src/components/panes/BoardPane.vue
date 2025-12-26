@@ -108,7 +108,7 @@ async function fetchBoard() {
   error.value = null
   
   try {
-    const response = await boardsApi.get(props.boardId)
+    const response = await boardsApi.getWithLists(props.boardId)
     currentBoard.value = response.data
     activeLists.value = response.data.lists.filter((l: any) => !l.list.archived)
   } catch (e) {

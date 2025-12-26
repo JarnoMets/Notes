@@ -47,7 +47,7 @@ async function fetchGraph() {
   error.value = null
   
   try {
-    const response = await graphsApi.get(props.graphId)
+    const response = await graphsApi.getWithData(props.graphId)
     graphData.value = response.data
   } catch (e) {
     logger.error('Failed to fetch graph', e)
