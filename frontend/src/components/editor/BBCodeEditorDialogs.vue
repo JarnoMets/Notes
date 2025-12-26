@@ -71,20 +71,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import FormModal from '../common/modals/FormModal.vue'
 import { useNotesStore } from '@/stores/notes'
 import { useExplorerStore } from '@/stores/explorer'
-import type { NoteAttachment } from '@/types'
+import Icon from '../common/ui/Icon.vue'
 
-const props = defineProps<{
-  textarea: HTMLTextAreaElement | null
-  attachments?: NoteAttachment[]
-}>()
-
-const emit = defineEmits<{
-  'insert-tag': [tag: string, content: string]
-}>()
+// ...existing code...
 
 const notesStore = useNotesStore()
 const explorerStore = useExplorerStore()
@@ -99,10 +92,15 @@ const showBoardLinkDialog = ref(false)
 const showAttachmentLinkDialog = ref(false)
 
 // Field definitions for dialogs
-const linkFields = [
-  { name: 'url', label: 'URL', type: 'url' as const, placeholder: 'https://example.com', required: true },
-  { name: 'text', label: 'Link Text', type: 'text' as const, placeholder: 'Click here', required: true }
-]
+const linkFields = computed(() => [
+  { name: 'type', label: 'Type', type: 'select' as const, required: true, options: [
+    { value: 'url', label: 'External URL' },
+    { value: 'note', label: 'Internal Note' }
+  ] },
+  { name: 'url', label: 'URL', type: 'text' as const, required: true, showIf: (data: any) => data.type === 'url' },
+  { name: 'note', label: 'Note', type: 'select' as const, required: true, options: explorerStore.notes.map((note: any) => ({ value: note.id, label: note.title })), showIf: (data: any) => data.type === 'note' },
+  { name: 'text', label: 'Display Text', type: 'text' as const, required: false }
+])
 
 const imageFields = [
   { name: 'url', label: 'Image URL', type: 'url' as const, placeholder: 'https://example.com/image.jpg', required: true },
@@ -119,13 +117,13 @@ const tableFields = [
   { name: 'cols', label: 'Columns', type: 'text' as const, placeholder: '3', required: true }
 ]
 
-const noteLinkFields = [
-  { name: 'note', label: 'Note', type: 'select' as const, required: true, options: notesStore.notes.map((note: any) => ({ value: note.id, label: note.title })) }
-]
+const noteLinkFields = computed(() => [
+  { name: 'note', label: 'Note', type: 'select' as const, required: true, options: explorerStore.notes.map((note: any) => ({ value: note.id, label: note.title })) }
+])
 
-const boardLinkFields = [
+const boardLinkFields = computed(() => [
   { name: 'board', label: 'Board', type: 'select' as const, required: true, options: explorerStore.boards.map((board: any) => ({ value: board.id, label: board.name })) }
-]
+])
 
 const attachmentLinkFields = [
   { name: 'attachment', label: 'Attachment', type: 'select' as const, required: true, options: props.attachments?.map((att: NoteAttachment) => ({ value: att.id, label: att.filename })) || [] }
@@ -133,7 +131,14 @@ const attachmentLinkFields = [
 
 // Dialog handlers
 function handleLinkConfirm(data: Record<string, string>) {
-  const tag = `url=${data.url}`
+  let tag = ''
+  if (data.type === 'url') {
+    tag = data.text ? `[url=${data.url}]${data.text}[/url]` : `[url]${data.url}[/url]`
+  } else {
+    const note = explorerStore.notes.find(n => n.id === data.note)
+    const text = data.text || note?.title || 'Note'
+    tag = `[note=${data.note}]${text}[/note]`
+  }
   emit('insert-tag', tag, data.text)
 }
 
@@ -178,7 +183,7 @@ function handleTableConfirm(data: Record<string, string>) {
 }
 
 function handleNoteLinkConfirm(data: Record<string, string>) {
-  const note = notesStore.notes.find(n => n.id === data.note)
+  const note = explorerStore.notes.find(n => n.id === data.note)
   if (note) {
     const tag = `note=${note.id}`
     emit('insert-tag', tag, note.title)

@@ -1,4 +1,5 @@
 import api from './client'
+import { createCrudApi, createTreeItemApi } from './crud'
 import type {
   CreateGraphRequest,
   UpdateGraphRequest,
@@ -8,36 +9,9 @@ import type {
   UpdateEdgeRequest,
 } from '../types/graph'
 
-export const graphsApi = {
-  // Graphs
-  getAll: () => api.get('/graphs'),
-  getTree: () => api.get('/graphs/tree'),
-  get: (id: string) => api.get(`/graphs/${id}`),
-  create: (data: CreateGraphRequest) => api.post('/graphs', data),
-  update: (id: string, data: UpdateGraphRequest) => api.put(`/graphs/${id}`, data),
-  delete: (id: string) => api.delete(`/graphs/${id}`),
-  move: (id: string, data: { folder_id: string | null; position: number }) =>
-    api.post(`/graphs/${id}/move`, data),
-}
+export const graphsApi = createTreeItemApi('/graphs', 'folder_id')
 
-export const graphFoldersApi = {
-  getAll: () => api.get('/graph-folders'),
-  create: (data: { name: string; parent_id?: string | null }) =>
-    api.post('/graph-folders', data),
-  update: (
-    id: string,
-    data: {
-      name?: string
-      parent_id?: string | null
-      position?: number
-      is_important?: boolean
-      is_urgent?: boolean
-    }
-  ) => api.put(`/graph-folders/${id}`, data),
-  delete: (id: string) => api.delete(`/graph-folders/${id}`),
-  move: (id: string, data: { parent_id: string | null; position: number }) =>
-    api.post(`/graph-folders/${id}/move`, data),
-}
+export const graphFoldersApi = createTreeItemApi('/graph-folders', 'parent_id')
 
 export const graphNodesApi = {
   getAll: (graphId: string) => api.get(`/graphs/${graphId}/nodes`),
