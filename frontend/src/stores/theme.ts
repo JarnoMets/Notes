@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { settingsApi } from '@/api/settings'
 import logger from '@/utils/logger'
+import { useSyncStore } from '@/stores/sync'
 
 export type ThemeName = 'dark' | 'light' | 'midnight' | 'forest' | 'ocean' | 'sunset'
 
@@ -234,6 +235,7 @@ export const useThemeStore = defineStore('theme', () => {
   const currentTheme = ref<ThemeName>(
     (localStorage.getItem('notes_theme') as ThemeName) || 'dark'
   )
+  const syncStore = useSyncStore()
   
   const theme = ref<Theme>(themes[currentTheme.value])
   const initialized = ref(false)
@@ -255,6 +257,15 @@ export const useThemeStore = defineStore('theme', () => {
   // Apply theme immediately on store initialization
   applyThemeInternal(theme.value)
 
+  async function withSync<R>(action: () => Promise<R>): Promise<R> {
+    syncStore.startSync()
+    try {
+      return await action()
+    } finally {
+      syncStore.endSync()
+    }
+  }
+
   async function setTheme(themeName: ThemeName) {
     currentTheme.value = themeName
     theme.value = themes[themeName]
@@ -264,11 +275,14 @@ export const useThemeStore = defineStore('theme', () => {
     // Save to server if authenticated
     const token = localStorage.getItem('notes_auth_token')
     if (token) {
-      try {
-        await settingsApi.update({ theme: themeName })
-      } catch (e) {
-        logger.error('Failed to save theme to server:', e)
-      }
+      return withSync(async () => {
+        try {
+          await settingsApi.update({ theme: themeName })
+        } catch (e) {
+          logger.error('Failed to save theme to server:', e)
+          throw e
+        }
+      })
     }
   }
 
@@ -281,19 +295,22 @@ export const useThemeStore = defineStore('theme', () => {
     const token = localStorage.getItem('notes_auth_token')
     if (!token || initialized.value) return
     
-    try {
-      const response = await settingsApi.get()
-      const serverTheme = response.data.theme as ThemeName
-      if (serverTheme && themes[serverTheme]) {
-        currentTheme.value = serverTheme
-        theme.value = themes[serverTheme]
-        localStorage.setItem('notes_theme', serverTheme)
-        applyTheme()
+    return withSync(async () => {
+      try {
+        const response = await settingsApi.get()
+        const serverTheme = response.data.theme as ThemeName
+        if (serverTheme && themes[serverTheme]) {
+          currentTheme.value = serverTheme
+          theme.value = themes[serverTheme]
+          localStorage.setItem('notes_theme', serverTheme)
+          applyTheme()
+        }
+        initialized.value = true
+      } catch (e) {
+        logger.error('Failed to load theme from server:', e)
+        throw e
       }
-      initialized.value = true
-    } catch (e) {
-      logger.error('Failed to load theme from server:', e)
-    }
+    })
   }
 
   // Apply theme on load

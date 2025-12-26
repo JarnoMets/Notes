@@ -103,6 +103,7 @@ import ConfirmModal from '../modals/ConfirmModal.vue'
 import BBCodeEditor from './BBCodeEditor.vue'
 import NoteEditorHeader from './NoteEditorHeader.vue'
 import NoteEditorAttachments from './NoteEditorAttachments.vue'
+import { useSync } from '@/composables/useSync'
 
 const props = defineProps<{
   noteId: string | null
@@ -114,6 +115,7 @@ const emit = defineEmits<{
 }>()
 
 const notesStore = useNotesStore()
+const { withSync } = useSync()
 const note = ref<NoteWithAttachments | null>(null)
 const isEditing = ref(false)
 const showAttachments = ref(false)
@@ -252,52 +254,58 @@ async function handleDeleteNote() {
   deleteNoteModal.value.visible = false
   if (!note.value) return
   
-  // Delete all attachments associated with this note
-  if (note.value.attachments && note.value.attachments.length > 0) {
-    try {
-      await Promise.all(
-        note.value.attachments.map(attachment =>
-          notesApi.deleteAttachment(attachment.id)
+  return withSync(async () => {
+    // Delete all attachments associated with this note
+    if (note.value!.attachments && note.value!.attachments.length > 0) {
+      try {
+        await Promise.all(
+          note.value!.attachments.map(attachment =>
+            notesApi.deleteAttachment(attachment.id)
+          )
         )
-      )
-    } catch (error) {
-      console.error('Failed to delete some attachments:', error)
+      } catch (error) {
+        console.error('Failed to delete some attachments:', error)
+      }
     }
-  }
-  
-  await notesStore.deleteNote(note.value.id)
+    
+    await notesStore.deleteNote(note.value!.id)
+  })
 }
 
 async function handleFileUpload(files: File[]) {
   if (!note.value) return
 
-  try {
-    const response = await notesApi.uploadAttachments(note.value.id, files)
-    if (note.value.attachments) {
-      note.value.attachments.push(...response.data)
-    } else {
-      note.value.attachments = response.data
+  return withSync(async () => {
+    try {
+      const response = await notesApi.uploadAttachments(note.value!.id, files)
+      if (note.value!.attachments) {
+        note.value!.attachments.push(...response.data)
+      } else {
+        note.value!.attachments = response.data
+      }
+      notesStore.invalidateNoteCache(note.value!.id)
+    } catch (error) {
+      console.error('Failed to upload files:', error)
     }
-    notesStore.invalidateNoteCache(note.value.id)
-  } catch (error) {
-    console.error('Failed to upload files:', error)
-  }
+  })
 }
 
 async function handleImageFilesDropped(files: File[]) {
   if (!note.value) return
   
-  try {
-    const response = await notesApi.uploadAttachments(note.value.id, files)
-    if (note.value.attachments) {
-      note.value.attachments.push(...response.data)
-    } else {
-      note.value.attachments = response.data
+  return withSync(async () => {
+    try {
+      const response = await notesApi.uploadAttachments(note.value!.id, files)
+      if (note.value!.attachments) {
+        note.value!.attachments.push(...response.data)
+      } else {
+        note.value!.attachments = response.data
+      }
+      notesStore.invalidateNoteCache(note.value!.id)
+    } catch (error) {
+      console.error('Failed to upload images:', error)
     }
-    notesStore.invalidateNoteCache(note.value.id)
-  } catch (error) {
-    console.error('Failed to upload images:', error)
-  }
+  })
 }
 
 function insertImageFromAttachment(attachment: NoteAttachment) {
@@ -308,20 +316,22 @@ function insertImageFromAttachment(attachment: NoteAttachment) {
 }
 
 async function downloadAttachment(attachment: NoteAttachment) {
-  try {
-    const response = await notesApi.downloadAttachment(attachment.id)
-    const blob = new Blob([response.data], { type: attachment.mime_type })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = attachment.original_filename
-    document.body.appendChild(a)
-    a.click()
-    window.URL.revokeObjectURL(url)
-    document.body.removeChild(a)
-  } catch (error) {
-    console.error('Failed to download attachment:', error)
-  }
+  return withSync(async () => {
+    try {
+      const response = await notesApi.downloadAttachment(attachment.id)
+      const blob = new Blob([response.data], { type: attachment.mime_type })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = attachment.original_filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Failed to download attachment:', error)
+    }
+  })
 }
 
 function confirmRemoveAttachment(attachment: NoteAttachment) {
@@ -337,15 +347,17 @@ async function handleDeleteAttachment() {
   deleteAttachmentModal.value.visible = false
   if (!attachment) return
   
-  try {
-    await notesApi.deleteAttachment(attachment.id)
-    if (note.value?.attachments) {
-      note.value.attachments = note.value.attachments.filter(a => a.id !== attachment.id)
+  return withSync(async () => {
+    try {
+      await notesApi.deleteAttachment(attachment.id)
+      if (note.value?.attachments) {
+        note.value.attachments = note.value.attachments.filter(a => a.id !== attachment.id)
+      }
+      notesStore.invalidateNoteCache(note.value!.id)
+    } catch (error) {
+      console.error('Failed to delete attachment:', error)
     }
-    notesStore.invalidateNoteCache(note.value!.id)
-  } catch (error) {
-    console.error('Failed to delete attachment:', error)
-  }
+  })
 }
 
 function handleRemovedAttachmentDecision(deleteFile: boolean) {
@@ -354,13 +366,16 @@ function handleRemovedAttachmentDecision(deleteFile: boolean) {
   if (deleteFile) {
     const attachment = removedAttachmentModal.value.attachment
     if (attachment) {
-      notesApi.deleteAttachment(attachment.id).then(() => {
-        if (note.value?.attachments) {
-          note.value.attachments = note.value.attachments.filter(a => a.id !== attachment.id)
+      withSync(async () => {
+        try {
+          await notesApi.deleteAttachment(attachment.id)
+          if (note.value?.attachments) {
+            note.value.attachments = note.value.attachments.filter(a => a.id !== attachment.id)
+          }
+          notesStore.invalidateNoteCache(note.value!.id)
+        } catch (error) {
+          console.error('Failed to delete attachment:', error)
         }
-        notesStore.invalidateNoteCache(note.value!.id)
-      }).catch(error => {
-        console.error('Failed to delete attachment:', error)
       })
     }
   }

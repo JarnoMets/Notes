@@ -71,12 +71,14 @@ import { boardsApi, listsApi, cardsApi } from '@/api'
 import type { BoardWithLists, Card } from '@/types'
 import logger from '@/utils/logger'
 import { toApiIso } from '@/utils/dates'
+import { useSync } from '@/composables/useSync'
 
 const props = defineProps<{
   boardId?: string
   paneId: string
 }>()
 
+const { withSync } = useSync()
 const currentBoard = ref<BoardWithLists | null>(null)
 const activeLists = ref<any[]>([])
 const loading = ref(false)
@@ -107,16 +109,18 @@ async function fetchBoard() {
   loading.value = true
   error.value = null
   
-  try {
-    const response = await boardsApi.getWithLists(props.boardId)
-    currentBoard.value = response.data
-    activeLists.value = response.data.lists.filter((l: any) => !l.list.archived)
-  } catch (e) {
-    logger.error('Failed to fetch board', e)
-    error.value = 'Failed to load board'
-  } finally {
-    loading.value = false
-  }
+  return withSync(async () => {
+    try {
+      const response = await boardsApi.getWithLists(props.boardId!)
+      currentBoard.value = response.data
+      activeLists.value = response.data.lists.filter((l: any) => !l.list.archived)
+    } catch (e) {
+      logger.error('Failed to fetch board', e)
+      error.value = 'Failed to load board'
+    } finally {
+      loading.value = false
+    }
+  })
 }
 
 watch(() => props.boardId, fetchBoard)
@@ -135,21 +139,25 @@ function openAddListModal() {
 
 async function addList(name: string) {
   if (!currentBoard.value || !name.trim()) return
-  try {
-    await listsApi.create(currentBoard.value.board.id, { name })
-    await fetchBoard()
-  } catch (e) {
-    logger.error('Failed to add list', e)
-  }
+  return withSync(async () => {
+    try {
+      await listsApi.create(currentBoard.value!.board.id, { name })
+      await fetchBoard()
+    } catch (e) {
+      logger.error('Failed to add list', e)
+    }
+  })
 }
 
 async function archiveList(listId: string) {
-  try {
-    await listsApi.archive(listId)
-    await fetchBoard()
-  } catch (e) {
-    logger.error('Failed to archive list', e)
-  }
+  return withSync(async () => {
+    try {
+      await listsApi.archive(listId)
+      await fetchBoard()
+    } catch (e) {
+      logger.error('Failed to archive list', e)
+    }
+  })
 }
 
 function confirmDeleteList(listId: string) {
@@ -163,13 +171,15 @@ function confirmDeleteList(listId: string) {
 
 async function handleDeleteList() {
   if (!confirmModal.value.listId) return
-  try {
-    await listsApi.delete(confirmModal.value.listId)
-    confirmModal.value.visible = false
-    await fetchBoard()
-  } catch (e) {
-    logger.error('Failed to delete list', e)
-  }
+  return withSync(async () => {
+    try {
+      await listsApi.delete(confirmModal.value.listId)
+      confirmModal.value.visible = false
+      await fetchBoard()
+    } catch (e) {
+      logger.error('Failed to delete list', e)
+    }
+  })
 }
 
 function onListsDragEnd() {
@@ -192,12 +202,14 @@ async function handlePromptSubmit(value: string) {
   if (promptModal.value.action === 'add-list') {
     await addList(value)
   } else if (promptModal.value.action === 'add-card') {
-    try {
-      await cardsApi.create(promptModal.value.listId, { title: value })
-      await fetchBoard()
-    } catch (e) {
-      logger.error('Failed to add card', e)
-    }
+    return withSync(async () => {
+      try {
+        await cardsApi.create(promptModal.value.listId, { title: value })
+        await fetchBoard()
+      } catch (e) {
+        logger.error('Failed to add card', e)
+      }
+    })
   }
 }
 
@@ -213,34 +225,42 @@ function closeEditCardModal() {
 
 async function handleCardSave(card: Card) {
   if (!card) return
-  try {
-    const payload: any = { ...card }
-    if (card.due_date) payload.due_date = toApiIso(card.due_date)
-    await cardsApi.update(card.id, payload)
-    closeEditCardModal()
-    await fetchBoard()
-  } catch (e) {
-    logger.error('Failed to save card', e)
-  }
+  return withSync(async () => {
+    try {
+      const payload: any = { ...card }
+      if (card.due_date) payload.due_date = toApiIso(card.due_date)
+      await cardsApi.update(card.id, payload)
+      closeEditCardModal()
+      await fetchBoard()
+    } catch (e) {
+      logger.error('Failed to save card', e)
+    }
+  })
 }
 
 async function handleCardArchive() {
   if (!editingCard.value) return
-  await cardsApi.archive(editingCard.value.id)
-  closeEditCardModal()
-  await fetchBoard()
+  return withSync(async () => {
+    await cardsApi.archive(editingCard.value!.id)
+    closeEditCardModal()
+    await fetchBoard()
+  })
 }
 
 async function handleCardDelete() {
   if (!editingCard.value) return
-  await cardsApi.delete(editingCard.value.id)
-  closeEditCardModal()
-  await fetchBoard()
+  return withSync(async () => {
+    await cardsApi.delete(editingCard.value!.id)
+    closeEditCardModal()
+    await fetchBoard()
+  })
 }
 
 async function handleMoveCard(cardId: string, _from: string, to: string, pos: number) {
-  await cardsApi.move({ card_id: cardId, target_list_id: to, position: pos })
-  await fetchBoard()
+  return withSync(async () => {
+    await cardsApi.move({ card_id: cardId, target_list_id: to, position: pos })
+    await fetchBoard()
+  })
 }
 </script>
 

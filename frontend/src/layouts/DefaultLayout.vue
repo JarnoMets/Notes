@@ -157,6 +157,7 @@ import { useLayoutStore } from '@/stores/layout'
 import { useExplorerStore, type ExplorerItem } from '@/stores/explorer'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
+import { useSync } from '@/composables/useSync'
 import { Sidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle, Ribbon } from '@/components/layout'
 import ExplorerTree from '@/components/ui/ExplorerTree.vue'
 import WindowManager from '@/components/window-manager/WindowManager.vue'
@@ -169,6 +170,7 @@ const layoutStore = useLayoutStore()
 const explorerStore = useExplorerStore()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const { withSync } = useSync()
 const router = useRouter()
 
 // Sidebar state
@@ -547,18 +549,16 @@ function handleConfirmDelete() {
   const item = confirmModal.value.item
   if (!item) return
 
-  if (item.type === 'note') explorerStore.deleteNote(item.id)
-  else if (item.type === 'folder') explorerStore.deleteFolder(item.id)
-  else if (item.type === 'board') explorerStore.deleteBoard(item.id)
-  else if (item.type === 'board-folder') explorerStore.deleteBoardFolder(item.id)
-  else if (item.type === 'graph') explorerStore.deleteGraph(item.id)
-  else if (item.type === 'graph-folder') explorerStore.deleteGraphFolder(item.id)
+  withSync(async () => {
+    if (item.type === 'note') await explorerStore.deleteNote(item.id)
+    else if (item.type === 'folder') await explorerStore.deleteFolder(item.id)
+    else if (item.type === 'board') await explorerStore.deleteBoard(item.id)
+    else if (item.type === 'board-folder') await explorerStore.deleteBoardFolder(item.id)
+    else if (item.type === 'graph') await explorerStore.deleteGraph(item.id)
+    else if (item.type === 'graph-folder') await explorerStore.deleteGraphFolder(item.id)
+  })
 
   confirmModal.value.visible = false
-}
-
-function handleDrop() {
-  // TODO: Handle move
 }
 
 async function handlePromptSubmit(name: string) {
@@ -568,39 +568,59 @@ async function handlePromptSubmit(name: string) {
   
   promptModal.value.visible = false
 
-  if (action === 'note') {
-    const note = await explorerStore.createNote(name, parentId)
-    if (note) openNote(note.id)
-  } else if (action === 'folder') {
-    await explorerStore.createFolder(name, parentId)
-  } else if (action === 'board') {
-    const board = await explorerStore.createBoard(name, parentId)
-    if (board) openBoard(board.id)
-  } else if (action === 'board-folder') {
-    await explorerStore.createBoardFolder(name, parentId)
-  } else if (action === 'graph') {
-    const graph = await explorerStore.createGraph(name, parentId)
-    if (graph) openGraph(graph.id)
-  } else if (action === 'graph-folder') {
-    await explorerStore.createGraphFolder(name, parentId)
-  } else if (action === 'rename' && item) {
-    if (name === item.name) return
+  withSync(async () => {
+    if (action === 'note') {
+      const note = await explorerStore.createNote(name, parentId)
+      if (note) openNote(note.id)
+    } else if (action === 'folder') {
+      await explorerStore.createFolder(name, parentId)
+    } else if (action === 'board') {
+      const board = await explorerStore.createBoard(name, parentId)
+      if (board) openBoard(board.id)
+    } else if (action === 'board-folder') {
+      await explorerStore.createBoardFolder(name, parentId)
+    } else if (action === 'graph') {
+      const graph = await explorerStore.createGraph(name, parentId)
+      if (graph) openGraph(graph.id)
+    } else if (action === 'graph-folder') {
+      await explorerStore.createGraphFolder(name, parentId)
+    } else if (action === 'rename' && item) {
+      if (name === item.name) return
 
-    if (item.type === 'note') {
-      explorerStore.updateNote(item.id, { title: name })
-      layoutStore.updateTabsByEntityId(item.id, { title: name })
+      if (item.type === 'note') {
+        await explorerStore.updateNote(item.id, { title: name })
+        layoutStore.updateTabsByEntityId(item.id, { title: name })
+      }
+      else if (item.type === 'folder') await explorerStore.renameFolder(item.id, name)
+      else if (item.type === 'board') {
+        await explorerStore.updateBoard(item.id, { name: name })
+        layoutStore.updateTabsByEntityId(item.id, { title: name })
+      }
+      else if (item.type === 'board-folder') await explorerStore.renameBoardFolder(item.id, name)
+      else if (item.type === 'graph') {
+        await explorerStore.updateGraph(item.id, { name: name })
+        layoutStore.updateTabsByEntityId(item.id, { title: name })
+      }
+      else if (item.type === 'graph-folder') await explorerStore.renameGraphFolder(item.id, name)
     }
-    else if (item.type === 'folder') explorerStore.renameFolder(item.id, name)
-    else if (item.type === 'board') {
-      explorerStore.updateBoard(item.id, { name: name })
-      layoutStore.updateTabsByEntityId(item.id, { title: name })
-    }
-    else if (item.type === 'board-folder') explorerStore.renameBoardFolder(item.id, name)
-    else if (item.type === 'graph') {
-      explorerStore.updateGraph(item.id, { name: name })
-      layoutStore.updateTabsByEntityId(item.id, { title: name })
-    }
-    else if (item.type === 'graph-folder') explorerStore.renameGraphFolder(item.id, name)
+  })
+}
+
+const updateThemeColors = () => {
+  const themeName = themeStore.currentTheme
+  const theme = themeStore.themes[themeName as keyof typeof themeStore.themes]
+  if (theme) {
+    document.documentElement.style.setProperty('--bg-primary', theme.colors.bgPrimary)
+    document.documentElement.style.setProperty('--bg-secondary', theme.colors.bgSecondary)
+    document.documentElement.style.setProperty('--bg-tertiary', theme.colors.bgTertiary)
+    document.documentElement.style.setProperty('--text-primary', theme.colors.textPrimary)
+    document.documentElement.style.setProperty('--text-secondary', theme.colors.textSecondary)
+    document.documentElement.style.setProperty('--text-muted', theme.colors.textMuted)
+    document.documentElement.style.setProperty('--accent', theme.colors.accent)
+    document.documentElement.style.setProperty('--border-primary', theme.colors.borderPrimary)
+    document.documentElement.style.setProperty('--border-secondary', theme.colors.borderSecondary)
+    document.documentElement.style.setProperty('--shadow-primary', theme.colors.shadowPrimary)
+    document.documentElement.style.setProperty('--shadow-secondary', theme.colors.shadowSecondary)
   }
 }
 
@@ -612,6 +632,8 @@ onMounted(() => {
   ;(window as any).__openNote = openNote
   ;(window as any).__openBoard = openBoard
   ;(window as any).__openGraph = openGraph
+
+  updateThemeColors()
 })
 
 onUnmounted(() => {

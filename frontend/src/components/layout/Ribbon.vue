@@ -33,6 +33,16 @@
         <Icon name="calendar" :size="20" />
       </button>
     </div>
+
+    <div class="ribbon-middle">
+      <div 
+        class="sync-indicator" 
+        :class="{ syncing: syncStore.isSyncing }"
+        :title="syncStore.isSyncing ? 'Saving changes...' : 'All changes saved'"
+      >
+        <Icon :name="syncStore.isSyncing ? 'refresh' : 'check'" :size="16" />
+      </div>
+    </div>
     
     <div class="ribbon-bottom">
       <button class="ribbon-btn theme-btn" @click="$emit('open-theme-selector')" title="Change Theme">
@@ -61,6 +71,9 @@
 
 <script setup lang="ts">
 import Icon from '@/components/ui/Icon.vue'
+import { useSyncStore } from '@/stores/sync'
+
+const syncStore = useSyncStore()
 
 defineProps<{
   activeTab: string
@@ -121,6 +134,39 @@ defineEmits<{
   flex-direction: column;
   align-items: center;
   gap: 8px;
+}
+
+.ribbon-middle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  justify-content: center;
+}
+
+.sync-indicator {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.sync-indicator.syncing {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.sync-indicator.syncing .icon {
+  animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .ribbon-btn {
