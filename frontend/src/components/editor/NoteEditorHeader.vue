@@ -69,7 +69,7 @@
 <script setup lang="ts">
 import { ref, nextTick } from 'vue'
 import type { NoteWithAttachments } from '@/types'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   note: NoteWithAttachments

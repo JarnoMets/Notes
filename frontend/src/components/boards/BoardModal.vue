@@ -52,7 +52,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 const props = defineProps<{
   visible: boolean

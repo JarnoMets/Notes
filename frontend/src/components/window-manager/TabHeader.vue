@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 import { openFloatingMenu } from '@/utils/floatingMenu'
 import type { LayoutTab } from '@/stores/layout'
 

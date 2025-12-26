@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import type { List, Card } from '../../types'
-import Icon from '../common/ui/Icon.vue'
+import Icon from '../ui/Icon.vue'
 
 defineProps<{
   visible: boolean

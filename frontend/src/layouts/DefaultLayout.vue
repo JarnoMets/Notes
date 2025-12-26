@@ -89,7 +89,7 @@
     />
 
     <!-- Sidebar -->
-    <WorkspaceSidebar
+    <Sidebar
       :width="sidebarWidth"
       :is-open="isMobileSidebarOpen"
       @refresh="refreshTree"
@@ -110,7 +110,7 @@
         @open-graph="openGraph"
         @drop="handleDrop"
       />
-    </WorkspaceSidebar>
+    </Sidebar>
 
     <!-- Resize Handle -->
     <ResizeHandle
@@ -158,14 +158,13 @@ import { useLayoutStore } from '@/stores/layout'
 import { useExplorerStore, type ExplorerItem } from '@/stores/explorer'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
-import { WorkspaceSidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle } from '@/components/workspace'
-import ExplorerTree from '@/components/common/ui/ExplorerTree.vue'
+import { Sidebar, MobileSidebarToggle, MobileOverlay, ResizeHandle, Ribbon } from '@/components/layout'
+import ExplorerTree from '@/components/ui/ExplorerTree.vue'
 import WindowManager from '@/components/window-manager/WindowManager.vue'
-import PromptModal from '@/components/common/modals/PromptModal.vue'
-import ConfirmModal from '@/components/common/modals/ConfirmModal.vue'
-import Ribbon from '@/components/workspace/Ribbon.vue'
-import Icon from '@/components/common/ui/Icon.vue'
-import SettingsModal from '@/components/common/modals/SettingsModal.vue'
+import PromptModal from '@/components/modals/PromptModal.vue'
+import ConfirmModal from '@/components/modals/ConfirmModal.vue'
+import Icon from '@/components/ui/Icon.vue'
+import SettingsModal from '@/components/modals/SettingsModal.vue'
 
 const layoutStore = useLayoutStore()
 const explorerStore = useExplorerStore()

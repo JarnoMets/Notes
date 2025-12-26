@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import Icon from '@/components/common/ui/Icon.vue'
+import Icon from '@/components/ui/Icon.vue'
 import type { Board } from '@/types'
 
 interface Props {

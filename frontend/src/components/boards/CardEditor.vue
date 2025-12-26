@@ -54,7 +54,7 @@
 import { ref, watch } from 'vue'
 import BBCodeEditor from '../editor/BBCodeEditor.vue'
 import CardEditorAttachments from './CardEditorAttachments.vue'
-import ConfirmModal from '../common/modals/ConfirmModal.vue'
+import ConfirmModal from '../modals/ConfirmModal.vue'
 import { cardsApi } from '../../api'
 import type { CardWithAttachments } from '../../types'
 

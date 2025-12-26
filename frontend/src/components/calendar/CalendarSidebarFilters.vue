@@ -89,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import Icon from '@/components/common/ui/Icon.vue'
+import Icon from '@/components/ui/Icon.vue'
 import MiniCalendar from '@/components/calendar/MiniCalendar.vue'
 import type { Board } from '@/types/board'
 import type { IcsCalendar } from '@/stores/settings'

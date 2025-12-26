@@ -64,9 +64,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { KanbanBoard } from '../boards'
 import CardEditModal from '../boards/CardEditModal.vue'
-import PromptModal from '../common/modals/PromptModal.vue'
-import ConfirmModal from '../common/modals/ConfirmModal.vue'
-import Icon from '../common/ui/Icon.vue'
+import PromptModal from '../modals/PromptModal.vue'
+import ConfirmModal from '../modals/ConfirmModal.vue'
+import Icon from '../ui/Icon.vue'
 import { boardsApi, listsApi, cardsApi } from '@/api'
 import type { BoardWithLists, Card } from '@/types'
 import logger from '@/utils/logger'
@@ -173,7 +173,7 @@ async function handleDeleteList() {
 }
 
 function onListsDragEnd() {
-  // TODO: Implement reorder logic similar to BoardsWorkspace
+  // TODO: Implement reorder logic
 }
 
 // Card Operations
