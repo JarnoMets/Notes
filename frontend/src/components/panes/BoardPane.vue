@@ -3,11 +3,13 @@
     <div v-if="loading" class="loading">Loading board...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="currentBoard" class="board-container">
-      <!-- Board Header (Simplified) -->
+      <!-- Board Header -->
       <div class="board-header">
-        <span class="board-name">{{ currentBoard.board.name }}</span>
+        <h2 class="board-name">{{ currentBoard.board.name }}</h2>
         <div class="board-actions">
-          <button @click="showAddListModal = true">Add List</button>
+          <button class="btn-icon" @click="openAddListModal" title="Add List">
+            <Icon name="plus" :size="18" />
+          </button>
         </div>
       </div>
 
@@ -20,24 +22,30 @@
         @lists-drag-end="onListsDragEnd"
         @open-card="openCardModal"
         @add-card="openAddCardModal"
-        @add-list="showAddListModal = true"
+        @add-list="openAddListModal"
         @archive-list="archiveList"
         @delete-list="confirmDeleteList"
         @move-card="handleMoveCard"
       />
     </div>
 
-    <!-- Modals (Simplified) -->
-    <!-- Add List Modal -->
-    <div v-if="showAddListModal" class="modal-overlay" @click.self="showAddListModal = false">
-      <div class="modal">
-        <h3>Add List</h3>
-        <form @submit.prevent="addList">
-          <input v-model="newListName" placeholder="List Name" required />
-          <button type="submit">Add</button>
-        </form>
-      </div>
-    </div>
+    <!-- Modals -->
+    <PromptModal
+      :visible="promptModal.visible"
+      :title="promptModal.title"
+      :placeholder="promptModal.placeholder"
+      @submit="handlePromptSubmit"
+      @cancel="promptModal.visible = false"
+    />
+
+    <ConfirmModal
+      :visible="confirmModal.visible"
+      :title="confirmModal.title"
+      :message="confirmModal.message"
+      variant="danger"
+      @confirm="handleDeleteList"
+      @cancel="confirmModal.visible = false"
+    />
 
     <!-- Card Edit Modal -->
     <CardEditModal
@@ -56,6 +64,9 @@
 import { ref, onMounted, watch } from 'vue'
 import { KanbanBoard } from '../boards'
 import CardEditModal from '../boards/CardEditModal.vue'
+import PromptModal from '../common/modals/PromptModal.vue'
+import ConfirmModal from '../common/modals/ConfirmModal.vue'
+import Icon from '../common/ui/Icon.vue'
 import { boardsApi, listsApi, cardsApi } from '@/api'
 import type { BoardWithLists, Card } from '@/types'
 import logger from '@/utils/logger'
@@ -72,10 +83,23 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 
 // Modals
-const showAddListModal = ref(false)
-const newListName = ref('')
 const showEditCardModal = ref(false)
 const editingCard = ref<Card | null>(null)
+
+const promptModal = ref({
+  visible: false,
+  title: '',
+  placeholder: '',
+  action: '',
+  listId: ''
+})
+
+const confirmModal = ref({
+  visible: false,
+  title: '',
+  message: '',
+  listId: ''
+})
 
 async function fetchBoard() {
   if (!props.boardId) return
@@ -99,12 +123,20 @@ watch(() => props.boardId, fetchBoard)
 onMounted(fetchBoard)
 
 // List Operations
-async function addList() {
-  if (!currentBoard.value || !newListName.value.trim()) return
+function openAddListModal() {
+  promptModal.value = {
+    visible: true,
+    title: 'Add List',
+    placeholder: 'List Name',
+    action: 'add-list',
+    listId: ''
+  }
+}
+
+async function addList(name: string) {
+  if (!currentBoard.value || !name.trim()) return
   try {
-    await listsApi.create(currentBoard.value.board.id, { name: newListName.value })
-    showAddListModal.value = false
-    newListName.value = ''
+    await listsApi.create(currentBoard.value.board.id, { name })
     await fetchBoard()
   } catch (e) {
     logger.error('Failed to add list', e)
@@ -121,8 +153,22 @@ async function archiveList(listId: string) {
 }
 
 function confirmDeleteList(listId: string) {
-  if (confirm('Delete list?')) {
-    listsApi.delete(listId).then(() => fetchBoard())
+  confirmModal.value = {
+    visible: true,
+    title: 'Delete List',
+    message: 'Are you sure you want to delete this list? All cards in it will be deleted.',
+    listId
+  }
+}
+
+async function handleDeleteList() {
+  if (!confirmModal.value.listId) return
+  try {
+    await listsApi.delete(confirmModal.value.listId)
+    confirmModal.value.visible = false
+    await fetchBoard()
+  } catch (e) {
+    logger.error('Failed to delete list', e)
   }
 }
 
@@ -132,9 +178,26 @@ function onListsDragEnd() {
 
 // Card Operations
 function openAddCardModal(listId: string) {
-  const title = prompt('Card Title:')
-  if (title) {
-    cardsApi.create(listId, { title }).then(() => fetchBoard())
+  promptModal.value = {
+    visible: true,
+    title: 'Add Card',
+    placeholder: 'Card Title',
+    action: 'add-card',
+    listId
+  }
+}
+
+async function handlePromptSubmit(value: string) {
+  promptModal.value.visible = false
+  if (promptModal.value.action === 'add-list') {
+    await addList(value)
+  } else if (promptModal.value.action === 'add-card') {
+    try {
+      await cardsApi.create(promptModal.value.listId, { title: value })
+      await fetchBoard()
+    } catch (e) {
+      logger.error('Failed to add card', e)
+    }
   }
 }
 
@@ -198,17 +261,68 @@ async function handleMoveCard(cardId: string, _from: string, to: string, pos: nu
 }
 
 .board-header {
-  height: 40px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
+  padding: 2rem 2rem 1rem 2rem;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .board-header {
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
 }
 
 .board-name {
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .board-name {
+    font-size: 1.25rem;
+  }
+}
+
+.board-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.board-header:hover .board-actions {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .board-actions {
+    opacity: 1;
+  }
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .loading, .error {

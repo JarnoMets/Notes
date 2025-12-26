@@ -37,6 +37,16 @@
         @confirm-remove-attachment="confirmRemoveAttachment"
       />
     </div>
+
+    <ConfirmModal
+      :visible="deleteAttachmentModal.visible"
+      title="Delete Attachment"
+      :message="deleteAttachmentModal.message"
+      confirm-text="Delete"
+      variant="danger"
+      @confirm="handleDeleteAttachment"
+      @cancel="deleteAttachmentModal.visible = false"
+    />
   </div>
 </template>
 
@@ -44,6 +54,7 @@
 import { ref, watch } from 'vue'
 import BBCodeEditor from '../editor/BBCodeEditor.vue'
 import CardEditorAttachments from './CardEditorAttachments.vue'
+import ConfirmModal from '../common/modals/ConfirmModal.vue'
 import { cardsApi } from '../../api'
 import type { CardWithAttachments } from '../../types'
 
@@ -59,6 +70,12 @@ const emit = defineEmits<{
 
 const isEditing = ref(false)
 const showAttachments = ref(false)
+
+const deleteAttachmentModal = ref({
+  visible: false,
+  attachment: null as any,
+  message: ''
+})
 
 watch(() => props.card, (newCard) => {
   if (newCard) {
@@ -129,13 +146,18 @@ async function downloadAttachment(attachment: any) {
 }
 
 function confirmRemoveAttachment(attachment: any) {
-  // TODO: Show confirmation dialog and delete
-  if (confirm(`Delete "${attachment.original_filename}"?`)) {
-    deleteAttachment(attachment)
+  deleteAttachmentModal.value = {
+    visible: true,
+    attachment,
+    message: `Are you sure you want to delete "${attachment.original_filename}"?`
   }
 }
 
-async function deleteAttachment(attachment: any) {
+async function handleDeleteAttachment() {
+  const attachment = deleteAttachmentModal.value.attachment
+  deleteAttachmentModal.value.visible = false
+  if (!attachment) return
+  
   try {
     await cardsApi.deleteAttachment(attachment.id)
     if (props.card?.attachments) {

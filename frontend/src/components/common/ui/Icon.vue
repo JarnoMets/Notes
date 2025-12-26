@@ -288,7 +288,17 @@
       <circle cx="12" cy="10" r="3"/>
     </template>
 
-    <!-- Share-2 (Graph) -->
+    <!-- Palette/Theme -->
+    <template v-else-if="name === 'palette'">
+      <circle cx="13.5" cy="6.5" r=".5"/>
+      <circle cx="17.5" cy="10.5" r=".5"/>
+      <circle cx="8.5" cy="7.5" r=".5"/>
+      <circle cx="6.5" cy="12.5" r=".5"/>
+      <path d="m14 2 3.29 2.7a2.43 2.43 0 0 0 2.65-.64c.28-.37.22-.91-.08-1.27l-2.48-3.02a2.37 2.37 0 0 0-3.15-.43c-.69.43-1.18 1.27-.96 2.15L14 2z"/>
+      <path d="m7.86 2.5 1.2 1.6a2.34 2.34 0 0 1 .31 1.9c-.29.83-.89 1.38-1.76 1.72C6.53 8.2 5.62 8.81 4.87 10.2c-.82 1.52-.35 3.57.72 4.25a5.25 5.25 0 0 0 4.42 1.13c1.62-.63 2.36-2.4 1.74-4.01S8.26 6.66 6.63 7.31c-.33.13-.53.42-.52.78a1.6 1.6 0 0 0 .45.9c.5.4 1.12.27 1.57-.29L10 8.5c.45-1.1-.2-2.4-1.3-2.8a2.09 2.09 0 0 0-2.03.3 2.43 2.43 0 0 0-.31 2.38l.95 1.57c.25.41.05 1.01-.41 1.25-.43.22-.96-.02-1.17-.47l-.48-.81-.06-.14c-.36-.74-.74-2.01-.64-2.53a6.16 6.16 0 0 1 1.1-2.82 4.53 4.53 0 0 1 3.75-1.59 4.65 4.65 0 0 1 3.37 1.37 2.13 2.13 0 0 1 .38 2.43L14 2l-.09-.14c-.14-.55-.37-1.43-.64-2.29L12.5 2z"/>
+    </template>
+
+    <!-- Share/Graph -->
     <template v-else-if="name === 'share-2'">
       <circle cx="18" cy="5" r="3"/>
       <circle cx="6" cy="12" r="3"/>
@@ -296,20 +306,91 @@
       <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
       <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
     </template>
+
+    <!-- Moon (Dark Theme) -->
+    <template v-else-if="name === 'moon'">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </template>
+
+    <!-- Sun (Light Theme) -->
+    <template v-else-if="name === 'sun'">
+      <circle cx="12" cy="12" r="5"/>
+      <line x1="12" y1="1" x2="12" y2="3"/>
+      <line x1="12" y1="21" x2="12" y2="23"/>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+      <line x1="1" y1="12" x2="3" y2="12"/>
+      <line x1="21" y1="12" x2="23" y2="12"/>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+    </template>
+
+    <!-- Tree (Forest Theme) -->
+    <template v-else-if="name === 'tree'">
+      <path d="M12 2L5 12h4v8h6v-8h4L12 2z"/>
+    </template>
+
+    <!-- Waves (Ocean Theme) -->
+    <template v-else-if="name === 'waves'">
+      <path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7 6 8.2 6c1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 .5 0 1-.1 1.5-.4"/>
+      <path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.5-1 3.7-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 .5 0 1-.1 1.5-.4"/>
+      <path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.5-1 3.7-1 1.3 0 2.5 1 3.8 1 1.2 0 2.4-1 3.7-1 1.3 0 2.5 1 3.8 1 .5 0 1-.1 1.5-.4"/>
+    </template>
+
+    <!-- Sunrise (Sunset Theme) -->
+    <template v-else-if="name === 'sunrise'">
+      <path d="M17 18a5 5 0 0 0-10 0"/>
+      <path d="M12 2v7"/>
+      <path d="M4.22 10.22l1.42 1.42"/>
+      <path d="M1 18h2"/>
+      <path d="M21 18h2"/>
+      <path d="M18.36 11.64l1.42-1.42"/>
+      <path d="M23 22H1"/>
+      <path d="M8 6L12 2l4 4"/>
+    </template>
+
+    <!-- Log Out -->
+    <template v-else-if="name === 'log-out'">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </template>
+
+    <!-- Database -->
+    <template v-else-if="name === 'database'">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+      <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+    </template>
   </svg>
 </template>
 
-<script setup lang="ts">
-withDefaults(defineProps<{
-  name: string
-  size?: number | string
-  strokeWidth?: number | string
-  stroke?: boolean
-  fill?: boolean
-}>(), {
-  size: 16,
-  strokeWidth: 2,
-  stroke: true,
-  fill: false
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'Icon',
+  props: {
+    name: {
+      type: String,
+      required: true
+    },
+    size: {
+      type: [Number, String],
+      default: 16
+    },
+    strokeWidth: {
+      type: [Number, String],
+      default: 2
+    },
+    stroke: {
+      type: Boolean,
+      default: true
+    },
+    fill: {
+      type: Boolean,
+      default: false
+    }
+  }
 })
 </script>

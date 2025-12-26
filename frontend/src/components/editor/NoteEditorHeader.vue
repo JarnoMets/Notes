@@ -1,11 +1,11 @@
 <template>
   <div class="editor-header">
     <div class="header-left">
-      <h2 class="note-title" v-if="!isEditingTitle" @dblclick="startEditingTitle">
+      <h2 class="note-title" @click="startEditingTitle">
         {{ note.title }}
       </h2>
       <input
-        v-else
+        v-if="isEditingTitle"
         ref="titleInput"
         v-model="editedTitle"
         class="title-input"
@@ -94,7 +94,6 @@ const menuWrapper = ref<HTMLElement | null>(null)
 const titleInput = ref<HTMLInputElement | null>(null)
 
 function startEditingTitle() {
-  if (!props.isEditing) return
   editedTitle.value = props.note.title || ''
   emit('update:isEditingTitle', true)
   nextTick(() => {
@@ -159,9 +158,14 @@ document.addEventListener('click', closeMenuOnClickOutside)
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-primary);
+  padding: 2rem 2rem 1rem 2rem;
+  background: transparent;
+}
+
+@media (max-width: 768px) {
+  .editor-header {
+    padding: 1rem 1rem 0.5rem 1rem;
+  }
 }
 
 .header-left {
@@ -170,44 +174,71 @@ document.addEventListener('click', closeMenuOnClickOutside)
 }
 
 .note-title {
-  font-size: 1.1rem;
-  font-weight: 600;
+  font-size: 2rem;
+  font-weight: 700;
   color: var(--text-primary);
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: default;
+  cursor: text;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .note-title {
+    font-size: 1.25rem;
+  }
 }
 
 .title-input {
   width: 100%;
-  font-size: 1.1rem;
-  font-weight: 600;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--accent);
+  font-size: 2rem;
+  font-weight: 700;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--accent);
   color: var(--text-primary);
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
+  padding: 0;
+  border-radius: 0;
   outline: none;
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 768px) {
+  .title-input {
+    font-size: 1.25rem;
+  }
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.editor-header:hover .header-actions {
+  opacity: 1;
+}
+
+@media (max-width: 768px) {
+  .header-actions {
+    opacity: 1;
+  }
 }
 
 .btn-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: var(--text-secondary);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.2s;
 }

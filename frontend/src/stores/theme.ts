@@ -8,6 +8,7 @@ export type ThemeName = 'dark' | 'light' | 'midnight' | 'forest' | 'ocean' | 'su
 export interface Theme {
   name: ThemeName
   label: string
+  icon: string
   colors: {
     // Base colors
     bgPrimary: string
@@ -50,6 +51,7 @@ export const themes: Record<ThemeName, Theme> = {
   dark: {
     name: 'dark',
     label: 'Dark',
+    icon: 'moon',
     colors: {
       bgPrimary: '#1e1e1e',
       bgSecondary: '#252526',
@@ -79,6 +81,7 @@ export const themes: Record<ThemeName, Theme> = {
   light: {
     name: 'light',
     label: 'Light',
+    icon: 'sun',
     colors: {
       bgPrimary: '#ffffff',
       bgSecondary: '#f3f3f3',
@@ -108,6 +111,7 @@ export const themes: Record<ThemeName, Theme> = {
   midnight: {
     name: 'midnight',
     label: 'Midnight',
+    icon: 'star',
     colors: {
       bgPrimary: '#0d1117',
       bgSecondary: '#161b22',
@@ -137,6 +141,7 @@ export const themes: Record<ThemeName, Theme> = {
   forest: {
     name: 'forest',
     label: 'Forest',
+    icon: 'tree',
     colors: {
       bgPrimary: '#1a2421',
       bgSecondary: '#1f2d29',
@@ -166,6 +171,7 @@ export const themes: Record<ThemeName, Theme> = {
   ocean: {
     name: 'ocean',
     label: 'Ocean',
+    icon: 'waves',
     colors: {
       bgPrimary: '#0f172a',
       bgSecondary: '#1e293b',
@@ -195,6 +201,7 @@ export const themes: Record<ThemeName, Theme> = {
   sunset: {
     name: 'sunset',
     label: 'Sunset',
+    icon: 'sunrise',
     colors: {
       bgPrimary: '#1c1917',
       bgSecondary: '#292524',

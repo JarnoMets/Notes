@@ -13,7 +13,7 @@
         'drop-below': dropPosition === 'below',
         'drop-inside': dropPosition === 'inside'
       }"
-      :style="{ paddingLeft: `${depth * 16 + 8}px` }"
+      :style="{ paddingLeft: `${depth * 12 + 8}px` }"
       :draggable="!inFavorites"
       @click="handleClick"
       @dblclick="handleDoubleClick"
@@ -29,7 +29,7 @@
         class="expand-toggle"
         @click.stop="handleToggle"
       >
-        <Icon :name="item.isExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+        <Icon :name="item.isExpanded ? 'chevron-down' : 'chevron-right'" :size="10" />
       </span>
       <span v-else class="expand-placeholder"></span>
 
@@ -71,7 +71,7 @@
           @click.stop="$emit('toggle-urgent', item)"
           :title="item.isUrgent ? 'Remove urgent' : 'Mark as urgent'"
         >
-          <Icon name="alert-triangle" :size="12" :fill="item.isUrgent || item.hasUrgentDescendant" />
+          <Icon name="alert-triangle" :size="10" :fill="item.isUrgent || item.hasUrgentDescendant" />
         </button>
         
         <!-- Star (favorite) indicator -->
@@ -82,7 +82,7 @@
           @click.stop="$emit('toggle-importance', item)"
           :title="item.isImportant ? 'Remove from favorites' : 'Add to favorites'"
         >
-          <Icon :name="item.isImportant ? 'star' : 'star-outline'" :size="12" :fill="item.isImportant" />
+          <Icon :name="item.isImportant ? 'star' : 'star-outline'" :size="10" :fill="item.isImportant" />
         </button>
       </div>
     </div>
@@ -170,6 +170,7 @@ function handleToggle() {
 }
 
 function handleContextMenu(event: MouseEvent) {
+  event.stopPropagation();
   emit('select', props.item);
   try {
     const menuItems: import('@/utils/floatingMenu').FloatingMenuItem[] = []
@@ -338,21 +339,28 @@ function onDrop(event: DragEvent) {
 .node-row {
   display: flex;
   align-items: center;
-  height: 28px;
+  height: 24px;
   padding-right: 8px;
   gap: 4px;
   cursor: pointer;
   border-radius: 4px;
   transition: background 0.1s;
   position: relative;
+  margin: 1px 4px;
 }
 
 .node-row:hover {
-  background: var(--bg-hover, #f5f5f5);
+  background: var(--bg-hover);
 }
 
 .node-row.is-selected {
-  background: var(--accent-light, #e3f2fd);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.node-row.is-selected .node-name {
+  font-weight: 600;
+  color: var(--accent);
 }
 
 .node-row.is-important .node-name {
@@ -361,21 +369,21 @@ function onDrop(event: DragEvent) {
 
 .node-row.is-urgent .node-name,
 .node-row.has-urgent-descendant .node-name {
-  color: var(--danger, #e53935);
+  color: var(--danger);
 }
 
 .node-row.drop-target {
-  background: color-mix(in srgb, var(--accent, #1976d2) 10%, transparent);
+  background: var(--accent-light);
 }
 
 .node-row.drop-above::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 8px;
-  right: 8px;
+  left: 4px;
+  right: 4px;
   height: 2px;
-  background: var(--accent, #1976d2);
+  background: var(--accent);
   border-radius: 1px;
 }
 
@@ -383,52 +391,56 @@ function onDrop(event: DragEvent) {
   content: '';
   position: absolute;
   bottom: 0;
-  left: 8px;
-  right: 8px;
+  left: 4px;
+  right: 4px;
   height: 2px;
-  background: var(--accent, #1976d2);
+  background: var(--accent);
   border-radius: 1px;
 }
 
 .node-row.drop-inside {
-  outline: 2px solid var(--accent, #1976d2);
-  outline-offset: -2px;
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 
 .expand-toggle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 18px;
-  color: var(--text-muted, #888);
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
   flex-shrink: 0;
   border-radius: 3px;
   transition: background 0.1s, color 0.1s;
 }
 
 .expand-toggle:hover {
-  color: var(--text-primary, #333);
-  background: var(--bg-hover, rgba(0, 0, 0, 0.1));
+  color: var(--text-primary);
+  background: var(--bg-hover);
 }
 
 .expand-placeholder {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
 .node-icon {
   flex-shrink: 0;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
+}
+
+.is-selected .node-icon {
+  color: var(--accent);
 }
 
 .node-icon.folder-icon {
-  color: var(--accent, #1976d2);
+  color: var(--text-muted);
 }
 
 .node-icon.board-icon {
-  color: var(--accent, #1976d2);
+  color: var(--text-muted);
 }
 
 .node-name {
@@ -436,8 +448,8 @@ function onDrop(event: DragEvent) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 13px;
-  color: var(--text-primary, #333);
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 /* Node action buttons */
@@ -464,59 +476,60 @@ function onDrop(event: DragEvent) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   background: transparent;
   border: none;
   border-radius: 3px;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s;
   padding: 0;
 }
 
 .action-btn:hover {
-  background: var(--bg-hover, rgba(0, 0, 0, 0.1));
-  color: var(--text-primary, #333);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 /* Star button */
 .star-btn {
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
 }
 
 .star-btn:hover {
-  color: var(--warning, #ffc107);
+  color: var(--warning);
 }
 
 .star-btn.is-starred {
-  color: var(--warning, #ffc107);
+  color: var(--warning);
 }
 
 /* Urgent button */
 .urgent-btn {
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
 }
 
 .urgent-btn:hover {
-  color: var(--danger, #e53935);
+  color: var(--danger);
 }
 
 .urgent-btn.is-urgent {
-  color: var(--danger, #e53935);
+  color: var(--danger);
 }
 
 .urgent-btn.has-urgent-child {
-  color: var(--danger, #e53935);
+  color: var(--danger);
   opacity: 0.6;
 }
 
 .importance-icon {
   flex-shrink: 0;
-  color: var(--warning, #ffc107);
+  color: var(--warning);
 }
 
 .node-children {
   /* Children are indented via paddingLeft on node-row */
 }
 </style>
+

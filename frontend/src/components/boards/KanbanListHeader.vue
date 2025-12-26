@@ -31,17 +31,17 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0 0.25rem 0.75rem;
-  border-bottom: 1px solid var(--border-primary);
-  margin-bottom: 0.75rem;
+  padding: 0 0 0.75rem 0;
+  margin-bottom: 0.5rem;
 }
 
 .list-header h3 {
   flex: 1;
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: var(--text-primary);
+  letter-spacing: -0.01em;
 }
 
 .card-count {

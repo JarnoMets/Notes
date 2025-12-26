@@ -1,3 +1,51 @@
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const name = ref('')
+const email = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const googleAuthUrl = ref<string | null>(null)
+
+onMounted(async () => {
+  googleAuthUrl.value = await authStore.getGoogleAuthUrl()
+})
+
+const passwordError = computed(() => {
+  if (confirmPassword.value && password.value !== confirmPassword.value) {
+    return 'Passwords do not match'
+  }
+  return null
+})
+
+const handleRegister = async () => {
+  if (password.value !== confirmPassword.value) {
+    return
+  }
+  
+  const success = await authStore.register({
+    name: name.value,
+    email: email.value,
+    password: password.value
+  })
+  
+  if (success) {
+    router.push('/')
+  }
+}
+
+const handleGoogleLogin = async () => {
+  if (googleAuthUrl.value) {
+    window.location.href = googleAuthUrl.value
+  }
+}
+</script>
+
 <template>
   <div class="auth-container">
     <div class="auth-card">
@@ -71,6 +119,7 @@
       </div>
 
       <button 
+        v-if="googleAuthUrl"
         @click="handleGoogleLogin" 
         class="btn btn-google btn-block"
         :disabled="authStore.loading"
@@ -91,50 +140,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-
-const router = useRouter()
-const authStore = useAuthStore()
-
-const name = ref('')
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
-
-const passwordError = computed(() => {
-  if (confirmPassword.value && password.value !== confirmPassword.value) {
-    return 'Passwords do not match'
-  }
-  return null
-})
-
-const handleRegister = async () => {
-  if (password.value !== confirmPassword.value) {
-    return
-  }
-  
-  const success = await authStore.register({
-    name: name.value,
-    email: email.value,
-    password: password.value
-  })
-  
-  if (success) {
-    router.push('/notes')
-  }
-}
-
-const handleGoogleLogin = async () => {
-  const url = await authStore.getGoogleAuthUrl()
-  if (url) {
-    window.location.href = url
-  }
-}
-</script>
 
 <style scoped>
 .auth-container {
@@ -165,16 +170,14 @@ const handleGoogleLogin = async () => {
 }
 
 .error-message {
-  background: color-mix(in srgb, var(--danger) 15%, var(--bg-tertiary));
+  background: var(--bg-tertiary);
   color: var(--danger);
   padding: 0.75rem;
   border-radius: 6px;
   margin-bottom: 1rem;
   font-size: 0.875rem;
-  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  border: 1px solid var(--danger);
 }
-
-/* Component-specific styles */
 
 .btn-block {
   width: 100%;
@@ -245,9 +248,6 @@ const handleGoogleLogin = async () => {
   text-decoration: underline;
 }
 
-/* ========================================
-   RESPONSIVE DESIGN
-   ======================================== */
 @media (max-width: 480px) {
   .auth-container {
     padding: 0.5rem;
@@ -263,30 +263,6 @@ const handleGoogleLogin = async () => {
   .auth-card h1 {
     font-size: 1.5rem;
   }
-
-  .form-group input {
-    font-size: 16px; /* Prevents zoom on iOS */
-    padding: 0.875rem;
-  }
-
-  .btn-block {
-    padding: 0.875rem;
-    font-size: 1rem;
-  }
-
-  .btn-google {
-    padding: 0.875rem;
-  }
-}
-
-@media (hover: none) and (pointer: coarse) {
-  .form-group input {
-    min-height: 48px;
-  }
-
-  .btn-block,
-  .btn-google {
-    min-height: 48px;
-  }
 }
 </style>
+

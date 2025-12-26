@@ -2,13 +2,6 @@
   <div class="calendar-view" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <!-- Sidebar -->
     <aside class="calendar-sidebar" :class="{ collapsed: sidebarCollapsed }">
-      <div class="sidebar-header">
-        <h2 v-if="!sidebarCollapsed">Calendars</h2>
-        <button class="collapse-btn" @click="sidebarCollapsed = !sidebarCollapsed" :title="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'">
-          <Icon :name="sidebarCollapsed ? 'chevron-right' : 'chevron-left'" />
-        </button>
-      </div>
-      
       <div class="sidebar-content" v-if="!sidebarCollapsed">
         <CalendarSidebarFilters
           :boards="boards"
@@ -274,6 +267,17 @@
         </div>
       </div>
     </div>
+
+    <!-- Confirm Delete Calendar Modal -->
+    <ConfirmModal
+      :visible="deleteCalendarModal.visible"
+      title="Delete Calendar"
+      :message="deleteCalendarModal.message"
+      confirm-text="Delete"
+      variant="danger"
+      @confirm="handleDeleteCalendar"
+      @cancel="deleteCalendarModal.visible = false"
+    />
   </div>
 </template>
 
@@ -286,6 +290,7 @@ import CalendarHeader from '@/components/calendar/CalendarHeader.vue'
 import MonthGrid from '@/components/calendar/MonthGrid.vue'
 import NoteTreeView from '@/components/common/ui/NoteTreeView.vue'
 import WeekView from '@/components/calendar/WeekView.vue'
+import ConfirmModal from '@/components/common/modals/ConfirmModal.vue'
 import { boardsApi, listsApi, cardsApi, notesApi, remindersApi } from '@/api'
 import { useSettingsStore } from '@/stores/settings'
 import { useExplorerStore } from '@/stores/explorer'
@@ -428,6 +433,13 @@ const reminderForm = ref({
 const noteForm = ref({
   title: '',
   content: ''
+})
+
+// Delete calendar confirmation
+const deleteCalendarModal = ref({
+  visible: false,
+  calendarId: '',
+  message: ''
 })
 
 // Note reminders added to calendar (date -> [note ids])
@@ -999,9 +1011,21 @@ async function refreshCalendar(calendarId: string) {
 }
 
 function deleteCalendar(calendarId: string) {
-  if (confirm('Are you sure you want to delete this calendar?')) {
-    settingsStore.removeIcsCalendar(calendarId)
+  const calendar = icsCalendars.value.find(c => c.id === calendarId)
+  if (calendar) {
+    deleteCalendarModal.value = {
+      visible: true,
+      calendarId,
+      message: `Are you sure you want to delete the calendar "${calendar.name}"?`
+    }
   }
+}
+
+function handleDeleteCalendar() {
+  if (deleteCalendarModal.value.calendarId) {
+    settingsStore.removeIcsCalendar(deleteCalendarModal.value.calendarId)
+  }
+  deleteCalendarModal.value.visible = false
 }
 
 // Fetch reminders from backend

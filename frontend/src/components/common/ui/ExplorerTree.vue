@@ -1,44 +1,17 @@
 <template>
   <div class="explorer-tree">
-    <!-- Tab Bar -->
-    <div class="explorer-tabs">
-      <button 
-        class="explorer-tab"
-        :class="{ active: activeTab === 'notes' }"
-        @click="activeTab = 'notes'"
-      >
-        <Icon name="file" :size="14" />
-        <span>Notes</span>
-      </button>
-      <button 
-        class="explorer-tab"
-        :class="{ active: activeTab === 'boards' }"
-        @click="activeTab = 'boards'"
-      >
-        <Icon name="board" :size="14" />
-        <span>Boards</span>
-      </button>
-      <button 
-        class="explorer-tab"
-        :class="{ active: activeTab === 'graphs' }"
-        @click="activeTab = 'graphs'"
-      >
-        <Icon name="share-2" :size="14" />
-        <span>Graphs</span>
-      </button>
-    </div>
-
     <!-- Notes Content -->
     <div v-if="activeTab === 'notes'" class="explorer-content">
       <div class="content-header">
         <div class="content-actions">
           <button @click="handleCreateNote" title="New Note">
-            <Icon name="plus" :size="12" />
-            <span>Note</span>
+            <Icon name="plus" :size="14" />
           </button>
           <button @click="handleCreateFolder" title="New Folder">
-            <Icon name="folder" :size="12" />
-            <span>Folder</span>
+            <Icon name="folder" :size="14" />
+          </button>
+          <button @click="explorerStore.fetchNotesTree()" title="Refresh">
+            <Icon name="refresh" :size="14" />
           </button>
         </div>
       </div>
@@ -54,15 +27,14 @@
         <!-- Favorites Section -->
         <div v-if="explorerStore.favoritesList.length > 0" class="favorites-section">
           <div 
-            class="favorites-header"
+            class="section-header"
             @click="explorerStore.toggleFavoritesFolder()"
           >
             <span class="expand-toggle">
               <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
             </span>
-            <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
-            <span class="favorites-title">Favorites</span>
-            <span class="favorites-count">{{ explorerStore.favoritesList.length }}</span>
+            <span class="section-title">Favorites</span>
+            <span class="section-count">{{ explorerStore.favoritesList.length }}</span>
           </div>
           <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
             <ExplorerTreeNode
@@ -125,12 +97,13 @@
       <div class="content-header">
         <div class="content-actions">
           <button @click="handleCreateBoard" title="New Board">
-            <Icon name="plus" :size="12" />
-            <span>Board</span>
+            <Icon name="plus" :size="14" />
           </button>
           <button @click="handleCreateBoardFolder" title="New Folder">
-            <Icon name="folder" :size="12" />
-            <span>Folder</span>
+            <Icon name="folder" :size="14" />
+          </button>
+          <button @click="explorerStore.fetchBoardsTree()" title="Refresh">
+            <Icon name="refresh" :size="14" />
           </button>
         </div>
       </div>
@@ -147,15 +120,14 @@
         <!-- Favorites Section (Boards) -->
         <div v-if="explorerStore.favoritesList.some(i => i.type === 'board' || i.type === 'board-folder')" class="favorites-section">
           <div 
-            class="favorites-header"
+            class="section-header"
             @click="explorerStore.toggleFavoritesFolder()"
           >
             <span class="expand-toggle">
               <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
             </span>
-            <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
-            <span class="favorites-title">Favorites</span>
-            <span class="favorites-count">{{ explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder').length }}</span>
+            <span class="section-title">Favorites</span>
+            <span class="section-count">{{ explorerStore.favoritesList.filter(i => i.type === 'board' || i.type === 'board-folder').length }}</span>
           </div>
           <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
             <ExplorerTreeNode
@@ -179,13 +151,12 @@
 
             <div class="boards-section">
               <template v-if="showBoardsHeader">
-                <div class="boards-header" @click="toggleBoardsSection">
+                <div class="section-header" @click="toggleBoardsSection">
                   <span class="expand-toggle">
                     <Icon :name="boardsSectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
                   </span>
-                  <Icon name="board" :size="14" />
-                  <span class="boards-title">Boards</span>
-                  <span class="boards-count">{{ explorerStore.boardsList.length }}</span>
+                  <span class="section-title">Boards</span>
+                  <span class="section-count">{{ explorerStore.boardsList.length }}</span>
                 </div>
 
                 <div v-if="boardsSectionExpanded">
@@ -260,12 +231,13 @@
       <div class="content-header">
         <div class="content-actions">
           <button @click="handleCreateGraph" title="New Graph">
-            <Icon name="plus" :size="12" />
-            <span>Graph</span>
+            <Icon name="plus" :size="14" />
           </button>
           <button @click="handleCreateGraphFolder" title="New Folder">
-            <Icon name="folder" :size="12" />
-            <span>Folder</span>
+            <Icon name="folder" :size="14" />
+          </button>
+          <button @click="explorerStore.fetchGraphsTree()" title="Refresh">
+            <Icon name="refresh" :size="14" />
           </button>
         </div>
       </div>
@@ -281,15 +253,14 @@
         <!-- Favorites Section (Graphs) -->
         <div v-if="explorerStore.favoritesList.some(i => i.type === 'graph' || i.type === 'graph-folder')" class="favorites-section">
           <div 
-            class="favorites-header"
+            class="section-header"
             @click="explorerStore.toggleFavoritesFolder()"
           >
             <span class="expand-toggle">
               <Icon :name="explorerStore.favoritesFolderExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
             </span>
-            <Icon name="star" :size="14" class="favorites-icon" :fill="true" />
-            <span class="favorites-title">Favorites</span>
-            <span class="favorites-count">{{ explorerStore.favoritesList.filter(i => i.type === 'graph' || i.type === 'graph-folder').length }}</span>
+            <span class="section-title">Favorites</span>
+            <span class="section-count">{{ explorerStore.favoritesList.filter(i => i.type === 'graph' || i.type === 'graph-folder').length }}</span>
           </div>
           <div v-if="explorerStore.favoritesFolderExpanded" class="favorites-items">
             <ExplorerTreeNode
@@ -312,29 +283,39 @@
         </div>
 
         <div class="graphs-section">
-          <template v-if="explorerStore.graphsList.length > 0">
-            <ExplorerTreeNode
-              v-for="item in explorerStore.graphsList"
-              :key="item.id"
-              :item="item"
-              :depth="0"
-              @select="handleGraphItemSelect"
-              @toggle="handleGraphToggle"
-              @dblclick="handleGraphItemDoubleClick"
-              @create-graph="() => {}"
-              @create-folder="(parentId: string | null) => $emit('create-graph-folder', parentId)"
-              @rename="(item: ExplorerItem) => $emit('rename', item)"
-              @delete="(item: ExplorerItem) => $emit('delete', item)"
-              @toggle-importance="handleToggleGraphImportance"
-              @toggle-urgent="handleToggleGraphUrgent"
-              @move-item="handleMoveItem"
-            />
-            <div v-if="isGraphsRootDropTarget" class="root-drop-indicator">Drop here to move to root</div>
-          </template>
-          <div v-else class="tree-empty">
-            <Icon name="share-2" :size="32" />
-            <span>No graphs yet</span>
-            <button class="btn btn-primary btn-sm" @click="$emit('create-graph', null)">Create your first graph</button>
+          <div class="section-header" @click="toggleGraphsSection">
+            <span class="expand-toggle">
+              <Icon :name="graphsSectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+            </span>
+            <span class="section-title">Graphs</span>
+            <span class="section-count">{{ explorerStore.graphsList.length }}</span>
+          </div>
+
+          <div v-if="graphsSectionExpanded">
+            <template v-if="explorerStore.graphsList.length > 0">
+              <ExplorerTreeNode
+                v-for="item in explorerStore.graphsList"
+                :key="item.id"
+                :item="item"
+                :depth="0"
+                @select="handleGraphItemSelect"
+                @toggle="handleGraphToggle"
+                @dblclick="handleGraphItemDoubleClick"
+                @create-graph="() => {}"
+                @create-folder="(parentId: string | null) => $emit('create-graph-folder', parentId)"
+                @rename="(item: ExplorerItem) => $emit('rename', item)"
+                @delete="(item: ExplorerItem) => $emit('delete', item)"
+                @toggle-importance="handleToggleGraphImportance"
+                @toggle-urgent="handleToggleGraphUrgent"
+                @move-item="handleMoveItem"
+              />
+              <div v-if="isGraphsRootDropTarget" class="root-drop-indicator">Drop here to move to root</div>
+            </template>
+            <div v-else class="tree-empty">
+              <Icon name="share-2" :size="32" />
+              <span>No graphs yet</span>
+              <button class="btn btn-primary btn-sm" @click="$emit('create-graph', null)">Create your first graph</button>
+            </div>
           </div>
         </div>
       </div>
@@ -343,7 +324,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useExplorerStore, type ExplorerItem } from '@/stores/explorer'
 import ExplorerTreeNode from './ExplorerTreeNode.vue'
 import Icon from './Icon.vue'
@@ -360,26 +341,19 @@ const showBoardsHeader = props.showBoardsHeader === undefined ? true : props.sho
 
 const explorerStore = useExplorerStore()
 
-// Boards section collapsed state (persist in localStorage so user preference survives reload)
+// Section states
 const BOARDS_SECTION_KEY = 'boardsSectionExpanded'
 const boardsSectionExpanded = ref<boolean>(true)
+const GRAPHS_SECTION_KEY = 'graphsSectionExpanded'
+const graphsSectionExpanded = ref<boolean>(true)
 
-function loadBoardsSectionState() {
+function loadSectionStates() {
   try {
-    const v = localStorage.getItem(BOARDS_SECTION_KEY)
-    if (v === null) {
-      boardsSectionExpanded.value = true
-    } else {
-      boardsSectionExpanded.value = v === '1' || v === 'true'
-    }
-  } catch (e) {
-    boardsSectionExpanded.value = true
-  }
-}
-
-function saveBoardsSectionState() {
-  try {
-    localStorage.setItem(BOARDS_SECTION_KEY, boardsSectionExpanded.value ? '1' : '0')
+    const b = localStorage.getItem(BOARDS_SECTION_KEY)
+    if (b !== null) boardsSectionExpanded.value = b === '1' || b === 'true'
+    
+    const g = localStorage.getItem(GRAPHS_SECTION_KEY)
+    if (g !== null) graphsSectionExpanded.value = g === '1' || g === 'true'
   } catch (e) {
     // ignore
   }
@@ -387,14 +361,17 @@ function saveBoardsSectionState() {
 
 function toggleBoardsSection() {
   boardsSectionExpanded.value = !boardsSectionExpanded.value
-  saveBoardsSectionState()
+  localStorage.setItem(BOARDS_SECTION_KEY, boardsSectionExpanded.value ? '1' : '0')
 }
 
-loadBoardsSectionState()
+function toggleGraphsSection() {
+  graphsSectionExpanded.value = !graphsSectionExpanded.value
+  localStorage.setItem(GRAPHS_SECTION_KEY, graphsSectionExpanded.value ? '1' : '0')
+}
 
-// Boards are rendered directly (no separate expanded state persisted)
+loadSectionStates()
 
-const activeTab = ref<'notes' | 'boards' | 'graphs'>(props.defaultTab || 'notes')
+const activeTab = computed(() => props.defaultTab || 'notes')
 
 // Root drop target states
 const isNotesRootDropTarget = ref(false)
@@ -404,27 +381,8 @@ let notesRootDragCounter = 0
 let boardsRootDragCounter = 0
 let graphsRootDragCounter = 0
 
-// Sync tab with current route - Disabled for Window Manager mode
-/*
-function syncTabWithRoute() {
-  if (route.path === '/boards') {
-    activeTab.value = 'boards'
-  } else if (route.path === '/notes') {
-    activeTab.value = 'notes'
-  } else if (route.path === '/graphs') {
-    activeTab.value = 'graphs'
-  }
-}
-
-// Watch for route changes
-watch(() => route.path, syncTabWithRoute)
-*/
-
 // Set initial tab based on route
 onMounted(() => {
-  // syncTabWithRoute()
-  
-  // Global cleanup handler for when drag ends anywhere
   document.addEventListener('dragend', handleGlobalDragEnd)
 })
 
@@ -918,132 +876,134 @@ async function handleMoveItem({ itemId, itemType, targetFolderId, insertBeforeId
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.explorer-tabs {
-  display: flex;
-  border-bottom: 1px solid #e0e0e0;
-}
-
-.explorer-tab {
-  flex: 1;
-  padding: 12px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.explorer-tab.active {
-  font-weight: 600;
-  color: #333;
-}
-
-.explorer-tab .icon {
-  margin-right: 8px;
+  background: var(--bg-secondary);
 }
 
 .explorer-content {
   flex: 1;
-  padding: 16px;
+  padding: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .content-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-bottom: 16px;
+  padding: 4px 8px;
+  border-bottom: 1px solid transparent;
 }
 
 .content-actions {
   display: flex;
-  gap: 8px;
+  gap: 2px;
+}
+
+.content-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.content-actions button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .tree-content {
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background-color: #fff;
-  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
   position: relative;
+  flex: 1;
+  padding: 4px 0;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin: 0 4px;
+  border-radius: 4px;
+  transition: all 0.1s;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.section-header:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.section-title {
+  flex: 1;
+  margin-left: 4px;
+}
+
+.section-count {
+  font-size: 9px;
+  opacity: 0.6;
+}
+
+.expand-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+
+.favorites-section, .boards-section, .graphs-section {
+  margin-bottom: 8px;
 }
 
 .tree-empty {
   text-align: center;
-  color: #999;
-  padding: 32px 0;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: #fff;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.favorites-section {
-  margin-bottom: 16px;
-}
-
-.favorites-header {
+  color: var(--text-muted);
+  padding: 32px 16px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  cursor: pointer;
-  padding: 8px;
-  background-color: #f9f9f9;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
+  gap: 12px;
 }
 
-.favorites-icon {
-  margin-right: 8px;
-}
-
-.favorites-title {
-  flex: 1;
-  font-weight: 500;
-}
-
-.favorites-count {
-  background-color: #007bff;
-  color: #fff;
-  border-radius: 12px;
-  padding: 2px 8px;
-  font-size: 12px;
-}
-
-.expand-toggle {
-  display: inline-block;
-  transition: transform 0.2s;
-}
-
-.expand-toggle.rotate {
-  transform: rotate(90deg);
+.tree-empty span {
+  font-size: 0.8rem;
 }
 
 .root-drop-active {
-  border-color: #007bff;
-  background-color: #e6f7ff;
+  background-color: var(--accent-light);
 }
 
 .root-drop-indicator {
   position: absolute;
-  bottom: 8px;
+  bottom: 0;
   left: 0;
   right: 0;
   text-align: center;
-  color: #007bff;
+  color: var(--accent);
+  font-size: 0.7rem;
   font-weight: 500;
-  padding: 8px 0;
-  border-top: 1px solid #e0e0e0;
-  background-color: #f9f9f9;
+  padding: 4px;
+  border: 1px dashed var(--accent);
+  background-color: var(--accent-light);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 10;
 }
 </style>
+

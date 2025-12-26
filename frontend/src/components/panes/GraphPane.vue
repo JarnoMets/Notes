@@ -3,9 +3,6 @@
     <div v-if="loading" class="loading">Loading graph...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="graphData" class="graph-container">
-      <div class="graph-toolbar">
-        <span class="graph-name">{{ graphData.graph.name }}</span>
-      </div>
       <GraphCanvas
         :nodes="graphData.nodes"
         :edges="graphData.edges"
@@ -15,6 +12,11 @@
         @node-select="handleNodeSelect"
         @edge-select="handleEdgeSelect"
         @open-node="handleOpenNode"
+        @delete-node="handleDeleteNode"
+        @delete-edge="handleDeleteEdge"
+        @rename-node="handleRenameNode"
+        @update-node="handleUpdateNode"
+        @update-edge="handleUpdateEdge"
       />
     </div>
   </div>
@@ -25,6 +27,7 @@ import { ref, onMounted, watch } from 'vue'
 import GraphCanvas from '../common/ui/GraphCanvas.vue'
 import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
 import type { GraphWithData, GraphNode } from '@/types'
+import { useExplorerStore } from '@/stores/explorer'
 import logger from '@/utils/logger'
 
 const props = defineProps<{
@@ -32,6 +35,7 @@ const props = defineProps<{
   paneId: string
 }>()
 
+const explorerStore = useExplorerStore()
 const graphData = ref<GraphWithData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -56,7 +60,7 @@ async function fetchGraph() {
 watch(() => props.graphId, fetchGraph)
 onMounted(fetchGraph)
 
-// Handlers (copied/adapted from GraphsWorkspace)
+// Handlers
 async function handleNodeMove(nodeId: string, x: number, y: number) {
   if (!graphData.value) return
   
@@ -78,7 +82,20 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
   
   try {
     let label = 'New Node'
-    // Logic to fetch label from referenceId would go here (needs store access)
+    
+    if (referenceId) {
+      if (type === 'note') {
+        const note = explorerStore.getNoteById(referenceId)
+        if (note) label = note.title
+      } else if (type === 'board') {
+        const board = explorerStore.getBoardById(referenceId)
+        if (board) label = board.name
+      }
+    } else if (type === 'bubble') {
+      const input = prompt('Enter bubble label:', 'New Bubble')
+      if (input === null) return // Cancelled
+      label = input || 'New Bubble'
+    }
     
     const response = await graphNodesApi.create(graphData.value.graph.id, {
       node_type: type,
@@ -87,8 +104,8 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
       reference_id: referenceId,
       x,
       y,
-      width: 120,
-      height: 60
+      width: type === 'note' || type === 'board' ? 140 : 80,
+      height: type === 'note' || type === 'board' ? 60 : 80
     })
     
     graphData.value.nodes.push(response.data)
@@ -104,7 +121,7 @@ async function handleCreateEdge(sourceId: string, targetId: string) {
     const response = await graphEdgesApi.create(graphData.value.graph.id, {
       source_node_id: sourceId,
       target_node_id: targetId,
-      edge_type: 'line',
+      edge_type: 'arrow',
       style: 'solid'
     })
     
@@ -124,12 +141,82 @@ function handleEdgeSelect(_edgeId: string | null) {
 
 function handleOpenNode(node: GraphNode) {
   if (node.node_type === 'note' && node.reference_id) {
-    // We need a way to open a note in a new tab/split from here
-    // For now, use the global handler or store
-    // Ideally, emit an event to the WindowManager
     (window as any).__openNote?.(node.reference_id)
   } else if (node.node_type === 'board' && node.reference_id) {
     (window as any).__openBoard?.(node.reference_id)
+  }
+}
+
+async function handleDeleteNode(nodeId: string) {
+  if (!graphData.value) return
+  
+  try {
+    await graphNodesApi.delete(graphData.value.graph.id, nodeId)
+    graphData.value.nodes = graphData.value.nodes.filter(n => n.id !== nodeId)
+    // Also remove connected edges
+    graphData.value.edges = graphData.value.edges.filter(e => 
+      e.source_node_id !== nodeId && e.target_node_id !== nodeId
+    )
+  } catch (e) {
+    logger.error('Failed to delete node', e)
+  }
+}
+
+async function handleDeleteEdge(edgeId: string) {
+  if (!graphData.value) return
+  
+  try {
+    await graphEdgesApi.delete(graphData.value.graph.id, edgeId)
+    graphData.value.edges = graphData.value.edges.filter(e => e.id !== edgeId)
+  } catch (e) {
+    logger.error('Failed to delete edge', e)
+  }
+}
+
+async function handleRenameNode(nodeId: string) {
+  if (!graphData.value) return
+  
+  const node = graphData.value.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  const newLabel = prompt('Enter new label:', node.label)
+  if (newLabel === null || newLabel === node.label) return
+  
+  try {
+    const response = await graphNodesApi.update(graphData.value.graph.id, nodeId, { label: newLabel })
+    node.label = response.data.label
+  } catch (e) {
+    logger.error('Failed to rename node', e)
+  }
+}
+
+async function handleUpdateNode(nodeId: string, updates: any) {
+  if (!graphData.value) return
+  
+  const node = graphData.value.nodes.find(n => n.id === nodeId)
+  if (!node) return
+  
+  try {
+    const response = await graphNodesApi.update(graphData.value.graph.id, nodeId, updates)
+    // Update local state
+    Object.assign(node, response.data)
+  } catch (e) {
+    logger.error('Failed to update node', e)
+  }
+}
+
+async function handleUpdateEdge(edgeId: string, updates: any) {
+  if (!graphData.value) return
+  
+  const edge = graphData.value.edges.find(e => e.id === edgeId)
+  if (!edge) return
+  
+  try {
+    const response = await graphEdgesApi.update(graphData.value.graph.id, edgeId, updates)
+    // Update local state
+    Object.assign(edge, response.data)
+  } catch (e) {
+    logger.error('Failed to update edge', e)
   }
 }
 </script>
@@ -148,20 +235,6 @@ function handleOpenNode(node: GraphNode) {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-.graph-toolbar {
-  height: 32px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-primary);
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-}
-
-.graph-name {
-  font-weight: 600;
-  font-size: 13px;
 }
 
 .loading, .error {
