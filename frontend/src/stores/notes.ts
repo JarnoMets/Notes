@@ -4,6 +4,7 @@ import type { Note, NoteWithAttachments } from '../types'
 import { notesApi } from '../api'
 import logger from '@/utils/logger'
 import { useExplorerStore } from './explorer'
+import { useSyncStore } from './sync'
 
 export interface OpenTab {
   id: string
@@ -22,6 +23,7 @@ export interface EditorPane {
 // Use the explorer store directly. Importing here is fine since explorer doesn't import notes.
 
 export const useNotesStore = defineStore('notes', () => {
+  const syncStore = useSyncStore()
   // Editor panes state
   const panes = ref<EditorPane[]>([
     { id: 'pane-1', tabs: [], activeTabId: null }
@@ -54,6 +56,7 @@ export const useNotesStore = defineStore('notes', () => {
   }
 
   async function updateNote(id: string, data: Partial<Note>) {
+    syncStore.startSync()
     try {
       const response = await notesApi.update(id, data)
       // Update cache
@@ -82,10 +85,13 @@ export const useNotesStore = defineStore('notes', () => {
     } catch (error) {
       logger.error('Failed to update note:', error)
       throw error
+    } finally {
+      syncStore.endSync()
     }
   }
 
   async function undoNote(id: string) {
+    syncStore.startSync()
     try {
       const response = await notesApi.undo(id)
       // Refresh note cache
@@ -94,10 +100,13 @@ export const useNotesStore = defineStore('notes', () => {
     } catch (error) {
       logger.error('Failed to undo note:', error)
       throw error
+    } finally {
+      syncStore.endSync()
     }
   }
 
   async function redoNote(id: string) {
+    syncStore.startSync()
     try {
       const response = await notesApi.redo(id)
       invalidateNoteCache(id)
@@ -105,6 +114,8 @@ export const useNotesStore = defineStore('notes', () => {
     } catch (error) {
       logger.error('Failed to redo note:', error)
       throw error
+    } finally {
+      syncStore.endSync()
     }
   }
 

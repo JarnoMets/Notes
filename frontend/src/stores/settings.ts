@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { settingsApi } from '@/api/settings'
 import logger from '@/utils/logger'
+import { useSyncStore } from '@/stores/sync'
 
 export interface IcsCalendar {
   id: string
@@ -70,6 +71,7 @@ const calendarColors = [
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<UserSettings>(loadSettings())
+  const syncStore = useSyncStore()
   const calendarEvents = ref<CalendarEvent[]>([])
   const loadingCalendars = ref(false)
   const calendarErrors = ref<Map<string, string>>(new Map())
@@ -97,25 +99,37 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings.value))
   }
 
+  async function withSync<R>(action: () => Promise<R>): Promise<R> {
+    syncStore.startSync()
+    try {
+      return await action()
+    } finally {
+      syncStore.endSync()
+    }
+  }
+
   // Save settings to server
   async function saveToServer() {
     const token = localStorage.getItem('notes_auth_token')
     if (!token) return
     
-    try {
-      await settingsApi.update({
-        week_starts_on_monday: settings.value.weekStartsOnMonday,
-        ics_calendars: settings.value.icsCalendars.map(c => ({
-          id: c.id,
-          name: c.name,
-          url: c.url,
-          color: c.color,
-          enabled: c.enabled
-        }))
-      })
-    } catch (e) {
-      logger.error('Failed to save settings to server:', e)
-    }
+    return withSync(async () => {
+      try {
+        await settingsApi.update({
+          week_starts_on_monday: settings.value.weekStartsOnMonday,
+          ics_calendars: settings.value.icsCalendars.map(c => ({
+            id: c.id,
+            name: c.name,
+            url: c.url,
+            color: c.color,
+            enabled: c.enabled
+          }))
+        })
+      } catch (e) {
+        logger.error('Failed to save settings to server:', e)
+        throw e
+      }
+    })
   }
 
   // Load settings from server
@@ -123,29 +137,32 @@ export const useSettingsStore = defineStore('settings', () => {
     const token = localStorage.getItem('notes_auth_token')
     if (!token || serverInitialized.value) return
     
-    try {
-      const response = await settingsApi.get()
-      const data = response.data
-      
-      // Merge server settings with local settings
-      settings.value.weekStartsOnMonday = data.week_starts_on_monday
-      
-      // Only use server calendars if we have them
-      if (data.ics_calendars && data.ics_calendars.length > 0) {
-        settings.value.icsCalendars = data.ics_calendars.map(c => ({
-          id: c.id,
-          name: c.name,
-          url: c.url,
-          color: c.color,
-          enabled: c.enabled
-        }))
+    return withSync(async () => {
+      try {
+        const response = await settingsApi.get()
+        const data = response.data
+        
+        // Merge server settings with local settings
+        settings.value.weekStartsOnMonday = data.week_starts_on_monday
+        
+        // Only use server calendars if we have them
+        if (data.ics_calendars && data.ics_calendars.length > 0) {
+          settings.value.icsCalendars = data.ics_calendars.map(c => ({
+            id: c.id,
+            name: c.name,
+            url: c.url,
+            color: c.color,
+            enabled: c.enabled
+          }))
+        }
+        
+        saveSettings()
+        serverInitialized.value = true
+      } catch (e) {
+        logger.error('Failed to load settings from server:', e)
+        throw e
       }
-      
-      saveSettings()
-      serverInitialized.value = true
-    } catch (e) {
-      logger.error('Failed to load settings from server:', e)
-    }
+    })
   }
 
   function addIcsCalendar(name: string, url: string, color?: string): IcsCalendar {
