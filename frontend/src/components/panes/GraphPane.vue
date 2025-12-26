@@ -30,7 +30,7 @@
       @cancel="bubbleModal.visible = false"
     />
 
-        <PromptModal
+    <PromptModal
       :visible="renameModal.visible"
       title="Rename Node"
       placeholder="Enter new label..."
@@ -90,93 +90,6 @@ const resourceModal = ref({
 })
 
 async function fetchGraph() {
-// ...existing code...
-async function handleCreateNode(x: number, y: number, type: any, referenceId?: string) {
-  if (!graphData.value) return
-  
-  try {
-    let label = 'New Node'
-    
-    if (referenceId) {
-      if (type === 'note') {
-        const note = explorerStore.getNoteById(referenceId)
-        if (note) label = note.title
-      } else if (type === 'board') {
-        const board = explorerStore.getBoardById(referenceId)
-        if (board) label = board.name
-      }
-    } else if (type === 'bubble') {
-      bubbleModal.value = { visible: true, x, y }
-      return // Wait for modal submit
-    } else if (type === 'note' || type === 'board') {
-      resourceModal.value = { visible: true, type, x, y }
-      return // Wait for modal submit
-    }
-    
-    await createNode(x, y, type, label, referenceId)
-  } catch (e) {
-    logger.error('Failed to create node', e)
-  }
-}
-
-async function handleBubbleSubmit(label: string) {
-  bubbleModal.value.visible = false
-  await createNode(bubbleModal.value.x, bubbleModal.value.y, 'bubble', label)
-}
-
-async function handleResourceSelect(itemId: string) {
-  const { type, x, y } = resourceModal.value
-  resourceModal.value.visible = false
-  
-  let label = 'New Node'
-  if (type === 'note') {
-    const note = explorerStore.getNoteById(itemId)
-    if (note) label = note.title
-  } else if (type === 'board') {
-    const board = explorerStore.getBoardById(itemId)
-    if (board) label = board.name
-  }
-  
-  await createNode(x, y, type, label, itemId)
-}
-
-async function createNode(x: number, y: number, type: any, label: string, referenceId?: string) {
-// ...existing code...
-  </div>
-</template>
-
-<script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import GraphCanvas from '../graphs/GraphCanvas.vue'
-import PromptModal from '../modals/PromptModal.vue'
-import { graphsApi, graphNodesApi, graphEdgesApi } from '@/api/graphs'
-import type { GraphWithData, GraphNode } from '@/types'
-import { useExplorerStore } from '@/stores/explorer'
-import logger from '@/utils/logger'
-
-const props = defineProps<{
-  graphId?: string
-  paneId: string
-}>()
-
-const explorerStore = useExplorerStore()
-const graphData = ref<GraphWithData | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
-
-const bubbleModal = ref({
-  visible: false,
-  x: 0,
-  y: 0
-})
-
-const renameModal = ref({
-  visible: false,
-  nodeId: '',
-  initialValue: ''
-})
-
-async function fetchGraph() {
   if (!props.graphId) return
   
   loading.value = true
@@ -230,6 +143,9 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
     } else if (type === 'bubble') {
       bubbleModal.value = { visible: true, x, y }
       return // Wait for modal submit
+    } else if (type === 'note' || type === 'board') {
+      resourceModal.value = { visible: true, type, x, y }
+      return // Wait for modal submit
     }
     
     await createNode(x, y, type, label, referenceId)
@@ -241,6 +157,22 @@ async function handleCreateNode(x: number, y: number, type: any, referenceId?: s
 async function handleBubbleSubmit(label: string) {
   bubbleModal.value.visible = false
   await createNode(bubbleModal.value.x, bubbleModal.value.y, 'bubble', label)
+}
+
+async function handleResourceSelect(itemId: string) {
+  const { type, x, y } = resourceModal.value
+  resourceModal.value.visible = false
+  
+  let label = 'New Node'
+  if (type === 'note') {
+    const note = explorerStore.getNoteById(itemId)
+    if (note) label = note.title
+  } else if (type === 'board') {
+    const board = explorerStore.getBoardById(itemId)
+    if (board) label = board.name
+  }
+  
+  await createNode(x, y, type, label, itemId)
 }
 
 async function createNode(x: number, y: number, type: any, label: string, referenceId?: string) {
