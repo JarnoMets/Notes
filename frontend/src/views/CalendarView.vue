@@ -295,6 +295,7 @@ import { boardsApi, listsApi, cardsApi, notesApi, remindersApi } from '@/api'
 import { useSettingsStore } from '@/stores/settings'
 import { useExplorerStore } from '@/stores/explorer'
 import { useNotesStore } from '@/stores/notes'
+import { useSync } from '@/composables/useSync'
 import logger from '@/utils/logger'
 import {
   dateToString,
@@ -870,6 +871,8 @@ function openAddNoteDialog() {
   }
 }
 
+const { withSync } = useSync()
+
 async function selectNoteFromTree(note: any) {
   // Add note reminder to calendar and save to backend
   const reminder: NoteReminder = {
@@ -884,23 +887,25 @@ async function selectNoteFromTree(note: any) {
     noteReminders.value.push(reminder)
     
     // Save to backend
-    try {
-      await remindersApi.create({
-        note_id: note.id,
-        title: note.name || note.title,
-        date: contextMenu.value.selectedDate,
-        time: '09:00',
-        remind_before: '0'
-      })
-    } catch (error) {
-      logger.error('Failed to save note link to calendar:', error)
-      // Remove from local array if save fails
-      const index = noteReminders.value.indexOf(reminder)
-      if (index > -1) {
-        noteReminders.value.splice(index, 1)
+    return withSync(async () => {
+      try {
+        await remindersApi.create({
+          note_id: note.id,
+          title: note.name || note.title,
+          date: contextMenu.value.selectedDate,
+          time: '09:00',
+          remind_before: '0'
+        })
+      } catch (error) {
+        logger.error('Failed to save note link to calendar:', error)
+        // Remove from local array if save fails
+        const index = noteReminders.value.indexOf(reminder)
+        if (index > -1) {
+          noteReminders.value.splice(index, 1)
+        }
+        alert('Failed to save note to calendar')
       }
-      alert('Failed to save note to calendar')
-    }
+    })
   }
   
   showAddNoteDialog.value = false
@@ -912,25 +917,27 @@ async function saveReminder() {
     return
   }
   
-  try {
-    // Reminders without a specific note are stored as reminders
-    // For now, we'll save them as-is to the backend
-    await remindersApi.create({
-      note_id: '', // Empty note_id for standalone reminders
-      title: reminderForm.value.title,
-      date: contextMenu.value.selectedDate,
-      time: reminderForm.value.time,
-      remind_before: reminderForm.value.remindBefore
-    })
-    
-    showReminderDialog.value = false
-    
-    // Refresh reminders list
-    await fetchReminders()
-  } catch (error) {
-    logger.error('Failed to save reminder:', error)
-    alert('Failed to save reminder')
-  }
+  return withSync(async () => {
+    try {
+      // Reminders without a specific note are stored as reminders
+      // For now, we'll save them as-is to the backend
+      await remindersApi.create({
+        note_id: '', // Empty note_id for standalone reminders
+        title: reminderForm.value.title,
+        date: contextMenu.value.selectedDate,
+        time: reminderForm.value.time,
+        remind_before: reminderForm.value.remindBefore
+      })
+      
+      showReminderDialog.value = false
+      
+      // Refresh reminders list
+      await fetchReminders()
+    } catch (error) {
+      logger.error('Failed to save reminder:', error)
+      alert('Failed to save reminder')
+    }
+  })
 }
 
 async function saveNote() {
@@ -939,23 +946,25 @@ async function saveNote() {
     return
   }
   
-  try {
-    // Create note via API
-    const response = await notesApi.create({
-      title: noteForm.value.title,
-      content: noteForm.value.content || ''
-    })
-    
-    const newNote = response.data
-    
-    // Navigate to the new note
-    router.push(`/notes?note=${newNote.id}`)
-    
-    showAddNoteDialog.value = false
-  } catch (error) {
-    logger.error('Failed to save note:', error)
-    alert('Failed to create note')
-  }
+  return withSync(async () => {
+    try {
+      // Create note via API
+      const response = await notesApi.create({
+        title: noteForm.value.title,
+        content: noteForm.value.content || ''
+      })
+      
+      const newNote = response.data
+      
+      // Navigate to the new note
+      router.push(`/notes?note=${newNote.id}`)
+      
+      showAddNoteDialog.value = false
+    } catch (error) {
+      logger.error('Failed to save note:', error)
+      alert('Failed to create note')
+    }
+  })
 }
 
 // Calendar modal methods
@@ -976,37 +985,41 @@ function editCalendar(cal: IcsCalendar) {
 
 async function saveCalendar() {
   calendarFormLoading.value = true
-  try {
-    if (editingCalendar.value) {
-      settingsStore.updateIcsCalendar(editingCalendar.value.id, {
-        name: calendarForm.value.name,
-        url: calendarForm.value.url,
-        color: calendarForm.value.color
-      })
-    } else {
-      settingsStore.addIcsCalendar(
-        calendarForm.value.name,
-        calendarForm.value.url,
-        calendarForm.value.color
-      )
+  return withSync(async () => {
+    try {
+      if (editingCalendar.value) {
+        await settingsStore.updateIcsCalendar(editingCalendar.value.id, {
+          name: calendarForm.value.name,
+          url: calendarForm.value.url,
+          color: calendarForm.value.color
+        })
+      } else {
+        await settingsStore.addIcsCalendar(
+          calendarForm.value.name,
+          calendarForm.value.url,
+          calendarForm.value.color
+        )
+      }
+      closeCalendarModal()
+    } catch (err) {
+      logger.error('Failed to save calendar:', err)
+      alert('Failed to save calendar. Please check the URL and try again.')
+    } finally {
+      calendarFormLoading.value = false
     }
-    closeCalendarModal()
-  } catch (err) {
-    logger.error('Failed to save calendar:', err)
-    alert('Failed to save calendar. Please check the URL and try again.')
-  } finally {
-    calendarFormLoading.value = false
-  }
+  })
 }
 
 async function refreshCalendar(calendarId: string) {
   const calendar = icsCalendars.value.find(c => c.id === calendarId)
   if (calendar) {
-    try {
-      await settingsStore.fetchIcsCalendar(calendar)
-    } catch (err) {
-      logger.error('Failed to refresh calendar:', err)
-    }
+    return withSync(async () => {
+      try {
+        await settingsStore.fetchIcsCalendar(calendar)
+      } catch (err) {
+        logger.error('Failed to refresh calendar:', err)
+      }
+    })
   }
 }
 
@@ -1021,9 +1034,11 @@ function deleteCalendar(calendarId: string) {
   }
 }
 
-function handleDeleteCalendar() {
+async function handleDeleteCalendar() {
   if (deleteCalendarModal.value.calendarId) {
-    settingsStore.removeIcsCalendar(deleteCalendarModal.value.calendarId)
+    await withSync(async () => {
+      await settingsStore.removeIcsCalendar(deleteCalendarModal.value.calendarId)
+    })
   }
   deleteCalendarModal.value.visible = false
 }
@@ -1050,75 +1065,77 @@ async function fetchReminders() {
 
 // Lifecycle
 onMounted(async () => {
-  try {
-    // Restore UI state saved from previous visit
-    loadCalendarViewState()
-
-    // Fetch boards
-    const boardsRes = await boardsApi.getAll()
-    boards.value = boardsRes.data
-    // If no selection was restored, default to all boards
-    if (!selectedBoardIds.value || selectedBoardIds.value.length === 0) {
-      selectedBoardIds.value = boards.value.map(b => b.id)
-    }
-
-    // Fetch cards for all boards through lists (parallelized)
+  return withSync(async () => {
     try {
-      // Fetch lists for all boards in parallel and store them in boardLists
-      const listsPerBoard = await Promise.all(
-        boards.value.map(async (board) => {
-          try {
-            const listsRes = await listsApi.getAll(board.id)
-            // store lists
-            boardLists.value[board.id] = listsRes.data as List[]
-            return { board, lists: listsRes.data as List[] }
-            } catch (err) {
-            logger.error(`Failed to load lists for board ${board.id}:`, err)
-            boardLists.value[board.id] = []
-            return { board, lists: [] as List[] }
-          }
-        })
-      )
+      // Restore UI state saved from previous visit
+      loadCalendarViewState()
 
-      // Fetch cards for all lists in parallel (flattened)
-      const cardFetchPromises: Promise<CardWithBoard[]>[] = []
-      for (const bwl of listsPerBoard) {
-        for (const list of bwl.lists) {
-          const p = cardsApi.getAll(list.id)
-            .then(res => (res.data as Card[]).map(card => ({ ...card, boardId: bwl.board.id, boardName: bwl.board.name })))
-            .catch(err => {
-              logger.error(`Failed to load cards for list ${list.id}:`, err)
-              return [] as CardWithBoard[]
-            })
-          cardFetchPromises.push(p)
-        }
+      // Fetch boards
+      const boardsRes = await boardsApi.getAll()
+      boards.value = boardsRes.data
+      // If no selection was restored, default to all boards
+      if (!selectedBoardIds.value || selectedBoardIds.value.length === 0) {
+        selectedBoardIds.value = boards.value.map(b => b.id)
       }
 
-      const cardsArrays = await Promise.all(cardFetchPromises)
-      cards.value = cardsArrays.flat()
+      // Fetch cards for all boards through lists (parallelized)
+      try {
+        // Fetch lists for all boards in parallel and store them in boardLists
+        const listsPerBoard = await Promise.all(
+          boards.value.map(async (board) => {
+            try {
+              const listsRes = await listsApi.getAll(board.id)
+              // store lists
+              boardLists.value[board.id] = listsRes.data as List[]
+              return { board, lists: listsRes.data as List[] }
+              } catch (err) {
+              logger.error(`Failed to load lists for board ${board.id}:`, err)
+              boardLists.value[board.id] = []
+              return { board, lists: [] as List[] }
+            }
+          })
+        )
+
+        // Fetch cards for all lists in parallel (flattened)
+        const cardFetchPromises: Promise<CardWithBoard[]>[] = []
+        for (const bwl of listsPerBoard) {
+          for (const list of bwl.lists) {
+            const p = cardsApi.getAll(list.id)
+              .then(res => (res.data as Card[]).map(card => ({ ...card, boardId: bwl.board.id, boardName: bwl.board.name })))
+              .catch(err => {
+                logger.error(`Failed to load cards for list ${list.id}:`, err)
+                return [] as CardWithBoard[]
+              })
+            cardFetchPromises.push(p)
+          }
+        }
+
+        const cardsArrays = await Promise.all(cardFetchPromises)
+        cards.value = cardsArrays.flat()
+      } catch (err) {
+        logger.error('Failed to load cards for calendar:', err)
+        cards.value = []
+      }
+
+      // ICS calendars are pre-loaded from App.vue, but ensure they're loaded
+      if (!settingsStore.initialized) {
+        await settingsStore.fetchAllIcsCalendars()
+      }
+
+      // Load notes and folders for the tree view in Add Note dialog
+      await explorerStore.fetchAll()
+
+      // Fetch reminders from backend
+      await fetchReminders()
+      
+      // WeekView handles its own scroll position; no action needed here
+      
+      // Add click listener to close context menu
+      document.addEventListener('click', closeContextMenu)
     } catch (err) {
-      logger.error('Failed to load cards for calendar:', err)
-      cards.value = []
+      logger.error('Failed to load calendar data:', err)
     }
-
-    // ICS calendars are pre-loaded from App.vue, but ensure they're loaded
-    if (!settingsStore.initialized) {
-      await settingsStore.fetchAllIcsCalendars()
-    }
-
-    // Load notes and folders for the tree view in Add Note dialog
-    await explorerStore.fetchAll()
-
-    // Fetch reminders from backend
-    await fetchReminders()
-    
-    // WeekView handles its own scroll position; no action needed here
-    
-    // Add click listener to close context menu
-    document.addEventListener('click', closeContextMenu)
-  } catch (err) {
-    logger.error('Failed to load calendar data:', err)
-  }
+  })
 })
 
 onUnmounted(() => {

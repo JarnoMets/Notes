@@ -6,6 +6,7 @@
       :can-undo="canUndo"
       :can-redo="canRedo"
       :textarea="textarea"
+      :attachment-count="attachments?.length || 0"
       @apply-format="applyFormat"
       @apply-color-format="applyColorFormat"
       @apply-highlight-format="applyHighlightFormat"
@@ -21,6 +22,12 @@
       @open-attachment-link-dialog="openAttachmentLinkDialog"
       @undo="undo"
       @redo="redo"
+      @update:isEditing="$emit('update:isEditing', $event)"
+      @toggle-attachments="$emit('toggle-attachments')"
+      @duplicate-note="$emit('duplicate-note')"
+      @export-note="$emit('export-note')"
+      @print-note="$emit('print-note')"
+      @confirm-delete-note="$emit('confirm-delete-note')"
     />
 
     <!-- Editor or Viewer -->
@@ -80,6 +87,11 @@ const emit = defineEmits<{
   (e: 'request-redo'): void
   (e: 'request-save'): void
   (e: 'request-done'): void
+  (e: 'toggle-attachments'): void
+  (e: 'duplicate-note'): void
+  (e: 'export-note'): void
+  (e: 'print-note'): void
+  (e: 'confirm-delete-note'): void
 }>()
 
 const router = useRouter()
@@ -668,10 +680,5 @@ async function handleDroppedImages(files: File[]) {
   border: none;
   border-top: 2px solid var(--border-primary);
   margin: 2rem 0;
-}
-
-.view-content :deep(br) {
-  content: '';
-  display: block;
 }
 </style>

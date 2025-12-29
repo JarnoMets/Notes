@@ -35,6 +35,10 @@
     </div>
 
     <div class="ribbon-middle">
+      <!-- Spacer -->
+    </div>
+    
+    <div class="ribbon-bottom">
       <div 
         class="sync-indicator" 
         :class="{ syncing: syncStore.isSyncing }"
@@ -42,9 +46,6 @@
       >
         <Icon :name="syncStore.isSyncing ? 'refresh' : 'check'" :size="16" />
       </div>
-    </div>
-    
-    <div class="ribbon-bottom">
       <button class="ribbon-btn theme-btn" @click="$emit('open-theme-selector')" title="Change Theme">
         <div class="theme-icon-wrapper">
           <Icon name="palette" :size="18" />

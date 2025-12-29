@@ -182,8 +182,17 @@ async function handleDeleteList() {
   })
 }
 
-function onListsDragEnd() {
-  // TODO: Implement reorder logic
+async function onListsDragEnd() {
+  if (!currentBoard.value) return
+  const listIds = activeLists.value.map(l => l.list.id)
+  return withSync(async () => {
+    try {
+      await listsApi.reorder({ board_id: currentBoard.value!.board.id, list_ids: listIds })
+    } catch (e) {
+      logger.error('Failed to reorder lists', e)
+      await fetchBoard()
+    }
+  })
 }
 
 // Card Operations

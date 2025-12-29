@@ -183,6 +183,10 @@ export class BBCodeParser {
         nodes.push({ type: 'text', content: token.content })
         this.advance()
       } else if (token.type === 'tag') {
+        // Auto-close li tags if another li starts
+        if (untilTag === 'li' && token.name === 'li') {
+          break
+        }
         const children = this.parseTag(token.name!)
         if (children) {
           nodes.push(children)
@@ -190,6 +194,10 @@ export class BBCodeParser {
       } else if (token.type === 'close') {
         if (untilTag && token.name === untilTag) {
           this.advance()
+          break
+        }
+        // Auto-close li tags when parent list ends
+        if (untilTag === 'li' && (token.name === 'ul' || token.name === 'ol')) {
           break
         }
         this.advance()
@@ -229,9 +237,7 @@ export class BBCodeRenderer {
   constructor() {
     this.nodeMap = {
       text: (node) => {
-        const escaped = this.escapeHtml(node.content as string)
-        // Convert newlines to <br> tags
-        return escaped.replace(/\n/g, '<br />')
+        return this.escapeHtml(node.content as string)
       },
       b: (node) => `<strong>${this.renderContent(node.content)}</strong>`,
       bold: (node) => `<strong>${this.renderContent(node.content)}</strong>`,

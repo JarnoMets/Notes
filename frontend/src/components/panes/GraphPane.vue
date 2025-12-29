@@ -3,10 +3,6 @@
     <div v-if="loading" class="loading">Loading graph...</div>
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="graphData" class="graph-container">
-      <div class="graph-status" :class="{ syncing: isSyncing }">
-        <Icon :name="isSyncing ? 'refresh' : 'check'" :size="14" />
-        <span>{{ isSyncing ? 'Saving...' : 'Saved' }}</span>
-      </div>
       <GraphCanvas
         :nodes="graphData.nodes"
         :edges="graphData.edges"
@@ -72,7 +68,7 @@ const props = defineProps<{
 }>()
 
 const explorerStore = useExplorerStore()
-const { withSync, isSyncing } = useSync()
+const { withSync } = useSync()
 const graphData = ref<GraphWithData | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -381,43 +377,6 @@ async function handleUpdateEdge(edgeId: string, updates: any) {
   flex-direction: column;
   overflow: hidden;
   position: relative;
-}
-
-.graph-status {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-primary);
-  padding: 4px 8px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  pointer-events: none;
-  transition: all 0.3s ease;
-  opacity: 0.8;
-}
-
-.graph-status.syncing {
-  color: var(--accent);
-  opacity: 1;
-}
-
-.graph-status .icon {
-  animation: none;
-}
-
-.syncing .icon {
-  animation: spin 2s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .loading, .error {

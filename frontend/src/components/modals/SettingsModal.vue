@@ -182,12 +182,12 @@ function close() {
   emit('close')
 }
 
-function toggleWeekStart() {
-  settingsStore.setWeekStartsOnMonday(!weekStartsOnMonday.value)
+async function toggleWeekStart() {
+  await settingsStore.setWeekStartsOnMonday(!weekStartsOnMonday.value)
 }
 
-function toggleCalendar(calendarId: string) {
-  settingsStore.toggleIcsCalendar(calendarId)
+async function toggleCalendar(calendarId: string) {
+  await settingsStore.toggleIcsCalendar(calendarId)
 }
 
 function openCalendarModal(calendar?: IcsCalendar) {
@@ -212,13 +212,13 @@ function closeCalendarModal() {
 
 async function saveCalendar() {
   if (editingCalendar.value) {
-    settingsStore.updateIcsCalendar(editingCalendar.value.id, {
+    await settingsStore.updateIcsCalendar(editingCalendar.value.id, {
       name: calendarForm.name,
       url: calendarForm.url,
       color: calendarForm.color
     })
   } else {
-    settingsStore.addIcsCalendar(
+    await settingsStore.addIcsCalendar(
       calendarForm.name,
       calendarForm.url,
       calendarForm.color
@@ -232,9 +232,9 @@ function confirmDeleteCalendar(calendar: IcsCalendar) {
   deleteConfirmOpen.value = true
 }
 
-function deleteCalendar() {
+async function deleteCalendar() {
   if (calendarToDelete.value) {
-    settingsStore.removeIcsCalendar(calendarToDelete.value.id)
+    await settingsStore.removeIcsCalendar(calendarToDelete.value.id)
   }
   deleteConfirmOpen.value = false
   calendarToDelete.value = null

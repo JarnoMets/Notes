@@ -423,7 +423,8 @@ async function handleMoveItem({ itemId, itemType, targetFolderId, insertBeforeId
   try {
     // Simple move implementation - appending to end (using timestamp as position)
     // Real reordering would require calculating position based on siblings
-    const position = Date.now() 
+    // We use seconds instead of milliseconds to fit in i32
+    const position = Math.floor(Date.now() / 1000) 
     
     if (itemType === 'note' || itemType === 'folder') {
       if (itemType === 'note') {
