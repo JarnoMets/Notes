@@ -23,6 +23,7 @@
         @image-files-dropped="handleImageFilesDropped"
         @request-save="handleSave"
         @request-done="() => { handleSave(); isEditing = false }"
+        @print-note="printCard"
       />
 
       <!-- Attachments Panel -->
@@ -56,6 +57,7 @@ import BBCodeEditor from '../editor/BBCodeEditor.vue'
 import CardEditorAttachments from './CardEditorAttachments.vue'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import { cardsApi } from '../../api'
+import { bbcodeToHtml } from '../../utils/bbcodeFormatter'
 import type { CardWithAttachments } from '../../types'
 
 const props = defineProps<{
@@ -169,6 +171,113 @@ async function handleDeleteAttachment() {
   } catch (error) {
     console.error('Failed to delete attachment:', error)
   }
+}
+
+function printCard() {
+  if (!props.card) return
+  
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  document.body.appendChild(iframe)
+  
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
+  
+  const renderedHtml = bbcodeToHtml(props.card.description || '', { paneId: 'card-editor' })
+  
+  const styles = `
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #000;
+      padding: 40px;
+      max-width: 100%;
+      margin: 0;
+      background: white;
+    }
+    h1 { font-size: 2.2em; margin-bottom: 0.5em; border-bottom: 2px solid #eee; padding-bottom: 0.3em; }
+    h2 { font-size: 1.8em; margin-top: 1.5em; margin-bottom: 0.5em; }
+    h3 { font-size: 1.4em; margin-top: 1.2em; margin-bottom: 0.4em; }
+    p { margin-bottom: 1em; }
+    blockquote {
+      border-left: 4px solid #ddd;
+      padding: 0.5em 1em;
+      margin: 1em 0;
+      color: #444;
+      font-style: italic;
+      background: #f9f9f9;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 1em;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 0.9em;
+      border: 1px solid #ddd;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 0.9em;
+      border: 1px solid #ddd;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1.5em 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th { background-color: #f5f5f5; font-weight: 600; }
+    img { max-width: 100%; height: auto; border-radius: 4px; margin: 1em 0; }
+    hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
+    .bbcode-list { padding-left: 2em; margin: 1em 0; }
+    .bbcode-list li { margin-bottom: 0.5em; }
+    
+    @media print {
+      body { padding: 0; }
+      @page { margin: 2cm; }
+    }
+  `
+  
+  doc.open()
+  doc.write(\`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>\${props.card.title}</title>
+      <style>\${styles}</style>
+    </head>
+    <body>
+      <h1>\${props.card.title}</h1>
+      <div class="content">\${renderedHtml}</div>
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            setTimeout(function() {
+              window.frameElement.remove();
+            }, 100);
+          }, 500);
+        };
+      </script>
+    </body>
+    </html>
+  \`)
+  doc.close()
 }
 </script>
 

@@ -165,7 +165,7 @@ export const useSettingsStore = defineStore('settings', () => {
     })
   }
 
-  function addIcsCalendar(name: string, url: string, color?: string): IcsCalendar {
+  async function addIcsCalendar(name: string, url: string, color?: string): Promise<IcsCalendar> {
     const newCalendar: IcsCalendar = {
       id: `ics-${Date.now()}`,
       name,
@@ -175,18 +175,18 @@ export const useSettingsStore = defineStore('settings', () => {
     }
     settings.value.icsCalendars.push(newCalendar)
     saveSettings()
-    saveToServer()
+    await saveToServer()
     // Fetch events for the new calendar
     fetchIcsCalendar(newCalendar)
     return newCalendar
   }
 
-  function updateIcsCalendar(id: string, updates: Partial<Omit<IcsCalendar, 'id'>>) {
+  async function updateIcsCalendar(id: string, updates: Partial<Omit<IcsCalendar, 'id'>>) {
     const calendar = settings.value.icsCalendars.find(c => c.id === id)
     if (calendar) {
       Object.assign(calendar, updates)
       saveSettings()
-      saveToServer()
+      await saveToServer()
       // Re-fetch if URL changed or if enabled
       if (updates.url || updates.enabled) {
         fetchIcsCalendar(calendar)
@@ -194,20 +194,20 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
-  function removeIcsCalendar(id: string) {
+  async function removeIcsCalendar(id: string) {
     settings.value.icsCalendars = settings.value.icsCalendars.filter(c => c.id !== id)
     calendarEvents.value = calendarEvents.value.filter(e => e.calendarId !== id)
     calendarErrors.value.delete(id)
     saveSettings()
-    saveToServer()
+    await saveToServer()
   }
 
-  function toggleIcsCalendar(id: string) {
+  async function toggleIcsCalendar(id: string) {
     const calendar = settings.value.icsCalendars.find(c => c.id === id)
     if (calendar) {
       calendar.enabled = !calendar.enabled
       saveSettings()
-      saveToServer()
+      await saveToServer()
       // Only fetch if enabling and not already cached
       if (calendar.enabled) {
         const lastFetch = lastFetchTime.value.get(id)
@@ -218,6 +218,12 @@ export const useSettingsStore = defineStore('settings', () => {
       }
       // Don't remove events when disabling - they're filtered out in the getters
     }
+  }
+// ...existing code...
+  function setWeekStartsOnMonday(value: boolean) {
+    settings.value.weekStartsOnMonday = value
+    saveSettings()
+    saveToServer()
   }
 
   // Parse ICS file content
@@ -533,10 +539,10 @@ export const useSettingsStore = defineStore('settings', () => {
   // Week start setting
   const weekStartsOnMonday = computed(() => settings.value.weekStartsOnMonday)
   
-  function setWeekStartsOnMonday(value: boolean) {
+  async function setWeekStartsOnMonday(value: boolean) {
     settings.value.weekStartsOnMonday = value
     saveSettings()
-    saveToServer()
+    await saveToServer()
   }
 
   return {

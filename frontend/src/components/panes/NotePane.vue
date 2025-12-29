@@ -44,6 +44,10 @@ function onTitleUpdate(title: string) {
   overflow: hidden;
 }
 
+.note-pane > :first-child {
+  flex: 1;
+}
+
 .empty-state {
   flex: 1;
   display: flex;

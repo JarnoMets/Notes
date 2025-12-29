@@ -1,17 +1,5 @@
 <template>
   <div class="note-editor" v-if="note">
-    <!-- Header Bar -->
-    <NoteEditorHeader
-      :note="note"
-      :is-editing="isEditing"
-      :show-attachments="showAttachments"
-      @update:is-editing="isEditing = $event"
-      @update:show-attachments="showAttachments = $event"
-      @duplicate-note="duplicateNote"
-      @export-note="exportNote"
-      @confirm-delete-note="confirmDeleteNote"
-    />
-
     <!-- Main Content Area -->
     <div class="editor-main">
       <BBCodeEditor
@@ -28,6 +16,11 @@
         @request-redo="handleRedo"
         @request-save="saveNote"
         @request-done="() => { saveNote(); isEditing = false }"
+        @toggle-attachments="showAttachments = !showAttachments"
+        @duplicate-note="duplicateNote"
+        @export-note="exportNote"
+        @print-note="printNote"
+        @confirm-delete-note="confirmDeleteNote"
       />
 
       <!-- Attachments Panel -->
@@ -98,10 +91,10 @@ import { ref, watch, onMounted } from 'vue'
 import { useNotesStore } from '@/stores/notes'
 import { notesApi } from '@/api'
 import { extractBBCodeReferences } from '@/utils/bbcode'
+import { bbcodeToHtml } from '@/utils/bbcodeFormatter'
 import type { NoteWithAttachments, NoteAttachment } from '@/types'
 import ConfirmModal from '../modals/ConfirmModal.vue'
 import BBCodeEditor from './BBCodeEditor.vue'
-import NoteEditorHeader from './NoteEditorHeader.vue'
 import NoteEditorAttachments from './NoteEditorAttachments.vue'
 import { useSync } from '@/composables/useSync'
 
@@ -200,7 +193,10 @@ function handleContentUpdate(newContent: string) {
 async function saveNote() {
   if (!note.value) return
   try {
-    await notesStore.updateNote(note.value.id, { content: note.value.content })
+    await notesStore.updateNote(note.value.id, { 
+      content: note.value.content,
+      title: note.value.title 
+    })
     isDirty.value = false
     emit('dirty', false)
   } catch (error) {
@@ -211,14 +207,16 @@ async function saveNote() {
 async function duplicateNote() {
   if (!note.value) return
   
-  const newNote = await notesStore.createNote(
-    `${note.value.title} (copy)`,
-    note.value.folder_id
-  )
-  
-  if (newNote) {
-    await notesStore.updateNote(newNote.id, { content: note.value.content })
-  }
+  return withSync(async () => {
+    const newNote = await notesStore.createNote(
+      `${note.value.title} (copy)`,
+      note.value.folder_id
+    )
+    
+    if (newNote) {
+      await notesStore.updateNote(newNote.id, { content: note.value.content })
+    }
+  })
 }
 
 function exportNote() {
@@ -232,6 +230,121 @@ function exportNote() {
   a.download = `${note.value.title}.txt`
   a.click()
   URL.revokeObjectURL(url)
+}
+
+function printNote() {
+  if (!note.value) return
+  
+  // Create a hidden iframe
+  const iframe = document.createElement('iframe')
+  iframe.style.position = 'fixed'
+  iframe.style.right = '0'
+  iframe.style.bottom = '0'
+  iframe.style.width = '0'
+  iframe.style.height = '0'
+  iframe.style.border = '0'
+  document.body.appendChild(iframe)
+  
+  const doc = iframe.contentWindow?.document
+  if (!doc) return
+  
+  // Get the rendered HTML
+  const renderedHtml = bbcodeToHtml(note.value.content || '', { paneId: props.paneId })
+  
+  // Add some basic styles for printing
+  const styles = `
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+      color: #000;
+      padding: 40px;
+      max-width: 100%;
+      margin: 0;
+      background: white;
+    }
+    h1 { font-size: 2.2em; margin-bottom: 0.5em; border-bottom: 2px solid #eee; padding-bottom: 0.3em; }
+    h2 { font-size: 1.8em; margin-top: 1.5em; margin-bottom: 0.5em; }
+    h3 { font-size: 1.4em; margin-top: 1.2em; margin-bottom: 0.4em; }
+    p { margin-bottom: 1em; }
+    blockquote {
+      border-left: 4px solid #ddd;
+      padding: 0.5em 1em;
+      margin: 1em 0;
+      color: #444;
+      font-style: italic;
+      background: #f9f9f9;
+    }
+    pre {
+      background: #f4f4f4;
+      padding: 1em;
+      border-radius: 4px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 0.9em;
+      border: 1px solid #ddd;
+    }
+    code {
+      background: #f4f4f4;
+      padding: 0.2em 0.4em;
+      border-radius: 3px;
+      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+      font-size: 0.9em;
+      border: 1px solid #ddd;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 1.5em 0;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th { background-color: #f5f5f5; font-weight: 600; }
+    img { max-width: 100%; height: auto; border-radius: 4px; margin: 1em 0; }
+    hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
+    .bbcode-note-link, .bbcode-board-link {
+      color: #27ae60;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .bbcode-list { padding-left: 2em; margin: 1em 0; }
+    .bbcode-list li { margin-bottom: 0.5em; }
+    
+    @media print {
+      body { padding: 0; }
+      @page { margin: 2cm; }
+    }
+  `
+  
+  doc.open()
+  doc.write(\`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>\${note.value.title}</title>
+      <style>\${styles}</style>
+    </head>
+    <body>
+      <h1>\${note.value.title}</h1>
+      <div class="content">\${renderedHtml}</div>
+      <script>
+        window.onload = function() {
+          setTimeout(function() {
+            window.print();
+            setTimeout(function() {
+              window.frameElement.remove();
+            }, 100);
+          }, 500);
+        };
+      </script>
+    </body>
+    </html>
+  \`)
+  doc.close()
 }
 
 function confirmDeleteNote() {
@@ -383,25 +496,29 @@ function handleRemovedAttachmentDecision(deleteFile: boolean) {
 
 async function handleUndo() {
   if (!note.value) return
-  try {
-    await notesStore.undoNote(note.value.id)
-    // reload note
-    const fresh = await notesStore.fetchNote(note.value.id)
-    if (fresh) note.value = fresh
-  } catch (error) {
-    console.error('Undo failed', error)
-  }
+  return withSync(async () => {
+    try {
+      await notesStore.undoNote(note.value.id)
+      // reload note
+      const fresh = await notesStore.fetchNote(note.value.id)
+      if (fresh) note.value = fresh
+    } catch (error) {
+      console.error('Undo failed', error)
+    }
+  })
 }
 
 async function handleRedo() {
   if (!note.value) return
-  try {
-    await notesStore.redoNote(note.value.id)
-    const fresh = await notesStore.fetchNote(note.value.id)
-    if (fresh) note.value = fresh
-  } catch (error) {
-    console.error('Redo failed', error)
-  }
+  return withSync(async () => {
+    try {
+      await notesStore.redoNote(note.value.id)
+      const fresh = await notesStore.fetchNote(note.value.id)
+      if (fresh) note.value = fresh
+    } catch (error) {
+      console.error('Redo failed', error)
+    }
+  })
 }
 
 watch(() => props.noteId, loadNote, { immediate: true })
@@ -412,6 +529,31 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.note-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.editor-main {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 1rem;
+  color: var(--text-muted);
+}
+
 .modal-small {
   max-width: 400px;
 }
