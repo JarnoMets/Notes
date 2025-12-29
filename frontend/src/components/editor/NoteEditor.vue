@@ -235,18 +235,12 @@ function exportNote() {
 function printNote() {
   if (!note.value) return
   
-  // Create a hidden iframe
-  const iframe = document.createElement('iframe')
-  iframe.style.position = 'fixed'
-  iframe.style.right = '0'
-  iframe.style.bottom = '0'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = '0'
-  document.body.appendChild(iframe)
-  
-  const doc = iframe.contentWindow?.document
-  if (!doc) return
+  // Open a new window/tab
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    alert('Please allow popups to print the note.')
+    return
+  }
   
   // Get the rendered HTML
   const renderedHtml = bbcodeToHtml(note.value.content || '', { paneId: props.paneId })
@@ -317,11 +311,12 @@ function printNote() {
     @media print {
       body { padding: 0; }
       @page { margin: 2cm; }
+      .no-print { display: none; }
     }
   `
   
-  doc.open()
-  doc.write(`
+  printWindow.document.open()
+  printWindow.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -335,16 +330,13 @@ function printNote() {
         window.onload = function() {
           setTimeout(function() {
             window.print();
-            setTimeout(function() {
-              window.frameElement.remove();
-            }, 100);
           }, 500);
         };
       </' + 'script>
     </body>
     </html>
   `)
-  doc.close()
+  printWindow.document.close()
 }
 
 function confirmDeleteNote() {

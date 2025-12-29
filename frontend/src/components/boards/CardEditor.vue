@@ -176,17 +176,11 @@ async function handleDeleteAttachment() {
 function printCard() {
   if (!props.card) return
   
-  const iframe = document.createElement('iframe')
-  iframe.style.position = 'fixed'
-  iframe.style.right = '0'
-  iframe.style.bottom = '0'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = '0'
-  document.body.appendChild(iframe)
-  
-  const doc = iframe.contentWindow?.document
-  if (!doc) return
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    alert('Please allow popups to print the card.')
+    return
+  }
   
   const renderedHtml = bbcodeToHtml(props.card.description || '', { paneId: 'card-editor' })
   
@@ -253,8 +247,8 @@ function printCard() {
     }
   `
   
-  doc.open()
-  doc.write(`
+  printWindow.document.open()
+  printWindow.document.write(`
     <!DOCTYPE html>
     <html>
     <head>
@@ -268,16 +262,13 @@ function printCard() {
         window.onload = function() {
           setTimeout(function() {
             window.print();
-            setTimeout(function() {
-              window.frameElement.remove();
-            }, 100);
           }, 500);
         };
       </' + 'script>
     </body>
     </html>
   `)
-  doc.close()
+  printWindow.document.close()
 }
 </script>
 
