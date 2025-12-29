@@ -321,16 +321,16 @@ function printNote() {
   `
   
   doc.open()
-  doc.write(\`
+  doc.write(`
     <!DOCTYPE html>
     <html>
     <head>
-      <title>\${note.value.title}</title>
-      <style>\${styles}</style>
+      <title>${note.value.title}</title>
+      <style>${styles}</style>
     </head>
     <body>
-      <h1>\${note.value.title}</h1>
-      <div class="content">\${renderedHtml}</div>
+      <h1>${note.value.title}</h1>
+      <div class="content">${renderedHtml}</div>
       <script>
         window.onload = function() {
           setTimeout(function() {
@@ -340,10 +340,10 @@ function printNote() {
             }, 100);
           }, 500);
         };
-      </script>
+      </' + 'script>
     </body>
     </html>
-  \`)
+  `)
   doc.close()
 }
 
