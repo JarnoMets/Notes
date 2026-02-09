@@ -13,6 +13,7 @@
     
     <div 
       class="tree-content"
+      @dragenter="onDragEnter"
       @dragover.prevent="onDragOver"
       @dragleave="onDragLeave"
       @drop.prevent="onDrop"
@@ -22,8 +23,8 @@
       <!-- Favorites Section -->
       <div v-if="favorites.length > 0" class="favorites-section">
         <div class="section-header" @click="$emit('toggle-favorites')">
-          <span class="expand-toggle">
-            <Icon :name="favoritesExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+          <span class="expand-toggle" :class="{ 'is-expanded': favoritesExpanded }">
+            <Icon name="chevron-right" :size="12" />
           </span>
           <span class="section-title">Favorites</span>
           <span class="section-count">{{ favorites.length }}</span>
@@ -51,8 +52,8 @@
       
       <div class="main-section">
         <div v-if="showHeader" class="section-header" @click="$emit('toggle-section')">
-          <span class="expand-toggle">
-            <Icon :name="sectionExpanded ? 'chevron-down' : 'chevron-right'" :size="12" />
+          <span class="expand-toggle" :class="{ 'is-expanded': sectionExpanded }">
+            <Icon name="chevron-right" :size="12" />
           </span>
           <span class="section-title">{{ title }}</span>
           <span class="section-count">{{ items.length }}</span>
@@ -130,16 +131,22 @@ const emit = defineEmits<{
 const isRootDropTarget = ref(false)
 let dragCounter = 0
 
+function onDragEnter(event: DragEvent) {
+  const hasAllowedType = props.allowedDragTypes.some(type => 
+    event.dataTransfer?.types.includes(type)
+  ) || event.dataTransfer?.types.includes('application/x-explorer-item')
+  
+  if (!hasAllowedType) return
+  
+  dragCounter++
+}
+
 function onDragOver(event: DragEvent) {
-  const data = event.dataTransfer?.getData('application/x-explorer-item')
-  if (!data) {
-    // Check types if data is not available during dragover
-    const hasAllowedType = props.allowedDragTypes.some(type => 
-      event.dataTransfer?.types.includes(type)
-    ) || event.dataTransfer?.types.includes('application/x-explorer-item')
-    
-    if (!hasAllowedType) return
-  }
+  const hasAllowedType = props.allowedDragTypes.some(type => 
+    event.dataTransfer?.types.includes(type)
+  ) || event.dataTransfer?.types.includes('application/x-explorer-item')
+  
+  if (!hasAllowedType) return
   
   const target = event.currentTarget as HTMLElement
   const rect = target.getBoundingClientRect()
@@ -147,10 +154,11 @@ function onDragOver(event: DragEvent) {
   const scrollHeight = target.scrollHeight
   
   if (y > scrollHeight - 40 || props.items.length === 0) {
-    dragCounter++
     isRootDropTarget.value = true
     event.dataTransfer!.dropEffect = 'move'
     event.preventDefault()
+  } else {
+    isRootDropTarget.value = false
   }
 }
 
@@ -288,6 +296,15 @@ function onEmptyAction() {
   width: 16px;
   height: 16px;
   color: var(--text-muted);
+  transition: transform 0.15s ease;
+}
+
+.expand-toggle.is-expanded {
+  transform: rotate(90deg);
+}
+
+.expand-toggle .icon {
+  display: block;
 }
 
 .favorites-section, .main-section {

@@ -33,7 +33,8 @@
               <div
                 class="card-drop-zone"
                 :class="{ 'active': dropZoneListId === listWithCards.list.id }"
-                @dragover.prevent
+                @dragover="onDropZoneDragOver($event, listWithCards.list.id)"
+                @dragleave="onDropZoneDragLeave"
                 @drop="onCardDropAtEnd($event, listWithCards.list.id)"
               ></div>
             </div>
@@ -167,6 +168,15 @@ function onCardDragLeave() {
   dragOverCard.value = ''
 }
 
+function onDropZoneDragOver(event: DragEvent, listId: string) {
+  event.preventDefault()
+  dropZoneListId.value = listId
+}
+
+function onDropZoneDragLeave() {
+  dropZoneListId.value = ''
+}
+
 function onCardDropOnCard(event: DragEvent, index: number, listId: string) {
   event.preventDefault()
   // Handle card drop on another card
@@ -229,14 +239,15 @@ function onCardDropAtEnd(event: DragEvent, listId: string) {
 }
 
 .card-drop-zone {
-  height: 4px;
+  flex: 1;
+  min-height: 20px;
   margin: 0.25rem 0;
   border-radius: 2px;
   transition: all 0.2s;
 }
 
 .card-drop-zone.active {
-  height: 40px;
+  min-height: 40px;
   background: rgba(52, 152, 219, 0.2);
   border: 2px dashed var(--accent);
 }

@@ -19,6 +19,7 @@
       @dblclick="handleDoubleClick"
       @contextmenu.prevent="handleContextMenu"
       @dragstart="onDragStart"
+      @dragenter="onDragEnter"
       @dragend="onDragEnd"
       @dragover.prevent="onDragOver"
       @dragleave="onDragLeave"
@@ -27,9 +28,10 @@
       <span
         v-if="isFolder"
         class="expand-toggle"
+        :class="{ 'is-expanded': item.isExpanded }"
         @click.stop="handleToggle"
       >
-        <Icon :name="item.isExpanded ? 'chevron-down' : 'chevron-right'" :size="10" />
+        <Icon name="chevron-right" :size="10" />
       </span>
       <span v-else class="expand-placeholder"></span>
 
@@ -239,11 +241,16 @@ function onDragEnd() {
   });
 }
 
+function onDragEnter(event: DragEvent) {
+  const hasExplorerType = event.dataTransfer?.types?.includes?.('application/x-explorer-item') || false;
+  if (!hasExplorerType) return;
+  dragCounter++;
+}
+
 function onDragOver(event: DragEvent) {
   const hasExplorerType = event.dataTransfer?.types?.includes?.('application/x-explorer-item') || false;
   if (!hasExplorerType) return;
 
-  dragCounter++;
   isDropTarget.value = true;
 
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
@@ -412,7 +419,11 @@ function onDrop(event: DragEvent) {
   color: var(--text-muted);
   flex-shrink: 0;
   border-radius: 3px;
-  transition: background 0.1s, color 0.1s;
+  transition: all 0.15s ease;
+}
+
+.expand-toggle.is-expanded {
+  transform: rotate(90deg);
 }
 
 .expand-toggle:hover {
