@@ -185,65 +185,67 @@ function printCard() {
   const renderedHtml = bbcodeToHtml(props.card.description || '', { paneId: 'card-editor' })
   
   const styles = `
+    @page {
+      size: auto;
+      margin: 0mm;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       line-height: 1.6;
       color: #000;
-      padding: 40px;
-      max-width: 100%;
       margin: 0;
+      padding: 20mm;
       background: white;
     }
-    h1 { font-size: 2.2em; margin-bottom: 0.5em; border-bottom: 2px solid #eee; padding-bottom: 0.3em; }
-    h2 { font-size: 1.8em; margin-top: 1.5em; margin-bottom: 0.5em; }
-    h3 { font-size: 1.4em; margin-top: 1.2em; margin-bottom: 0.4em; }
-    p { margin-bottom: 1em; }
+    h1 { font-size: 24pt; margin-bottom: 12pt; border-bottom: 1pt solid #ccc; padding-bottom: 6pt; }
+    h2 { font-size: 18pt; margin-top: 20pt; margin-bottom: 10pt; }
+    h3 { font-size: 14pt; margin-top: 16pt; margin-bottom: 8pt; }
+    p { margin-bottom: 10pt; }
     blockquote {
-      border-left: 4px solid #ddd;
-      padding: 0.5em 1em;
-      margin: 1em 0;
+      border-left: 3pt solid #ddd;
+      padding: 5pt 15pt;
+      margin: 15pt 0;
       color: #444;
       font-style: italic;
       background: #f9f9f9;
     }
     pre {
       background: #f4f4f4;
-      padding: 1em;
-      border-radius: 4px;
-      overflow-x: auto;
+      padding: 10pt;
+      border-radius: 4pt;
       white-space: pre-wrap;
       word-wrap: break-word;
       font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 0.9em;
-      border: 1px solid #ddd;
+      font-size: 10pt;
+      border: 0.5pt solid #ddd;
+      margin: 10pt 0;
     }
     code {
       background: #f4f4f4;
-      padding: 0.2em 0.4em;
-      border-radius: 3px;
+      padding: 2pt 4pt;
+      border-radius: 2pt;
       font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 0.9em;
-      border: 1px solid #ddd;
+      font-size: 10pt;
+      border: 0.5pt solid #ddd;
     }
     table {
       border-collapse: collapse;
       width: 100%;
-      margin: 1.5em 0;
+      margin: 15pt 0;
     }
     th, td {
-      border: 1px solid #ddd;
-      padding: 10px;
+      border: 0.5pt solid #ddd;
+      padding: 8pt;
       text-align: left;
     }
     th { background-color: #f5f5f5; font-weight: 600; }
-    img { max-width: 100%; height: auto; border-radius: 4px; margin: 1em 0; }
-    hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }
-    .bbcode-list { padding-left: 2em; margin: 1em 0; }
-    .bbcode-list li { margin-bottom: 0.5em; }
+    img { max-width: 100%; height: auto; border-radius: 4pt; margin: 10pt 0; }
+    hr { border: none; border-top: 0.5pt solid #eee; margin: 20pt 0; }
+    .bbcode-list { padding-left: 25pt; margin: 10pt 0; }
+    .bbcode-list li { margin-bottom: 5pt; }
     
     @media print {
-      body { padding: 0; }
-      @page { margin: 2cm; }
+      body { padding: 20mm; }
     }
   `
   
@@ -260,9 +262,10 @@ function printCard() {
       <div class="content">${renderedHtml}</div>
       <script>
         window.onload = function() {
-          setTimeout(function() {
-            window.print();
-          }, 500);
+          window.print();
+          window.onafterprint = function() {
+            window.close();
+          };
         };
       </' + 'script>
     </body>

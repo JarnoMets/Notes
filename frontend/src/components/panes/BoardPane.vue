@@ -4,14 +4,17 @@
     <div v-else-if="error" class="error">{{ error }}</div>
     <div v-else-if="currentBoard" class="board-container">
       <!-- Board Header -->
-      <div class="board-header">
-        <h2 class="board-name">{{ currentBoard.board.name }}</h2>
-        <div class="board-actions">
-          <button class="btn-icon" @click="openAddListModal" title="Add List">
-            <Icon name="plus" :size="18" />
-          </button>
-        </div>
-      </div>
+      <BoardHeader
+        :board="currentBoard.board"
+        :has-active-filters="hasFilters"
+        @toggle-filters="hasFilters = !hasFilters"
+        @open-labels="showLabels = true"
+        @open-automations="showAutomations = true"
+        @open-archive="showArchive = true"
+        @edit-board="() => {}"
+        @add-list="openAddListModal"
+        @delete-board="deleteBoard"
+      />
 
       <KanbanBoard
         v-model:lists="activeLists"
@@ -26,6 +29,33 @@
         @archive-list="archiveList"
         @delete-list="confirmDeleteList"
         @move-card="handleMoveCard"
+      />
+
+      <!-- Panels -->
+      <LabelsPanel
+        v-if="showLabels"
+        :labels="currentBoard.labels"
+        @close="showLabels = false"
+        @create="handleLabelCreate"
+        @edit="handleLabelEdit"
+        @delete="handleLabelDelete"
+      />
+
+      <AutomationsPanel
+        v-if="showAutomations"
+        :automations="currentBoard.automations"
+        @close="showAutomations = false"
+        @create="handleAutomationCreate"
+        @toggle="handleAutomationToggle"
+        @delete="handleAutomationDelete"
+      />
+
+      <ArchivePanel
+        v-if="showArchive"
+        :lists="currentBoard.lists.filter(l => l.list.archived)"
+        @close="showArchive = false"
+        @restore-list="restoreList"
+        @restore-card="restoreCard"
       />
     </div>
 
@@ -57,21 +87,42 @@
       @archive="handleCardArchive"
       @delete="handleCardDelete"
     />
+
+    <!-- Side Panels -->
+    <LabelsPanel
+      :visible="showLabels"
+      :labels="currentBoard?.labels || []"
+      @close="showLabels = false"
+      @create="handleLabelCreate"
+      @edit="handleLabelEdit"
+      @delete="handleLabelDelete"
+    />
+
+    <AutomationsPanel
+      :visible="showAutomations"
+      :automations="currentBoard?.automations || []"
+      :lists="currentBoard?.lists || []"
+      :labels="currentBoard?.labels || []"
+      @close="showAutomations = false"
+      @create="handleAutomationCreate"
+      @toggle="handleAutomationToggle"
+      @delete="handleAutomationDelete"
+    />
+
+    <ArchivePanel
+      :visible="showArchive"
+      :archived-lists="currentBoard?.lists.filter(l => l.list.archived).map(l => l.list) || []"
+      :archived-cards="archivedCards" 
+      @close="showArchive = false"
+      @restore-list="restoreList"
+      @restore-card="restoreCard"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
-import { KanbanBoard } from '../boards'
-import CardEditModal from '../boards/CardEditModal.vue'
-import PromptModal from '../modals/PromptModal.vue'
-import ConfirmModal from '../modals/ConfirmModal.vue'
-import Icon from '../ui/Icon.vue'
-import { boardsApi, listsApi, cardsApi } from '@/api'
-import type { BoardWithLists, Card } from '@/types'
-import logger from '@/utils/logger'
-import { toApiIso } from '@/utils/dates'
-import { useSync } from '@/composables/useSync'
+import { ref, onMounted, watch, computed } from 'vue'
+import { KanbanBoard, BoardHeader, LabelsPanel, AutomationsPanel, ArchivePanel } from '../boards'
 
 const props = defineProps<{
   boardId?: string
@@ -81,8 +132,20 @@ const props = defineProps<{
 const { withSync } = useSync()
 const currentBoard = ref<BoardWithLists | null>(null)
 const activeLists = ref<any[]>([])
+
+const archivedCards = computed(() => {
+  if (!currentBoard.value) return []
+  return currentBoard.value.lists.flatMap(lwc => lwc.cards.filter(c => c.archived))
+})
+
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Panel visibility
+const showLabels = ref(false)
+const showAutomations = ref(false)
+const showArchive = ref(false)
+const hasFilters = ref(false)
 
 // Modals
 const showEditCardModal = ref(false)
@@ -169,8 +232,31 @@ function confirmDeleteList(listId: string) {
   }
 }
 
+async function deleteBoard() {
+  if (!currentBoard.value) return
+  confirmModal.value = {
+    visible: true,
+    title: 'Delete Board',
+    message: 'Are you sure you want to delete this entire board? This cannot be undone.',
+    listId: 'DELETE_BOARD'
+  }
+}
+
 async function handleDeleteList() {
   if (!confirmModal.value.listId) return
+  if (confirmModal.value.listId === 'DELETE_BOARD') {
+    return withSync(async () => {
+      try {
+        await boardsApi.delete(currentBoard.value!.board.id)
+        // Close tab? We don't have a direct way to close the tab from here yet.
+        // But the user can close it.
+        error.value = 'Board deleted.'
+        currentBoard.value = null
+      } catch (e) {
+        logger.error('Failed to delete board', e)
+      }
+    })
+  }
   return withSync(async () => {
     try {
       await listsApi.delete(confirmModal.value.listId)
@@ -193,6 +279,49 @@ async function onListsDragEnd() {
       await fetchBoard()
     }
   })
+}
+
+// Board Actions
+async function handleLabelCreate(data: { name: string; color: string }) {
+  if (!currentBoard.value) return
+  await boardsApi.createLabel(currentBoard.value.board.id, data)
+  await fetchBoard()
+}
+
+async function handleLabelEdit(label: any) {
+  await boardsApi.updateLabel(label.id, label)
+  await fetchBoard()
+}
+
+async function handleLabelDelete(labelId: string) {
+  await boardsApi.deleteLabel(labelId)
+  await fetchBoard()
+}
+
+async function handleAutomationCreate(data: any) {
+  if (!currentBoard.value) return
+  await boardsApi.createAutomation(currentBoard.value.board.id, data)
+  await fetchBoard()
+}
+
+async function handleAutomationToggle(id: string) {
+  await boardsApi.toggleAutomation(id)
+  await fetchBoard()
+}
+
+async function handleAutomationDelete(id: string) {
+  await boardsApi.deleteAutomation(id)
+  await fetchBoard()
+}
+
+async function restoreList(id: string) {
+  await listsApi.restore(id)
+  await fetchBoard()
+}
+
+async function restoreCard(id: string) {
+  await cardsApi.restore(id)
+  await fetchBoard()
 }
 
 // Card Operations

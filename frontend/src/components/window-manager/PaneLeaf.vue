@@ -25,10 +25,13 @@
       <div class="tabs-spacer"></div>
       <div class="pane-actions">
         <button class="pane-action" @click="split('column')" title="Split Down">
-          <Icon name="columns" :size="14" style="transform: rotate(90deg)" />
+          <Icon name="split-horizontal" :size="14" />
         </button>
         <button class="pane-action" @click="split('row')" title="Split Right">
-          <Icon name="columns" :size="14" />
+          <Icon name="split-vertical" :size="14" />
+        </button>
+        <button class="pane-action" @click="closePane" title="Close Pane">
+          <Icon name="x" :size="14" />
         </button>
       </div>
     </div>
@@ -142,6 +145,10 @@ function splitRight() {
 
 function split(direction: LayoutDirection) {
   layoutStore.splitLeaf(props.leaf.id, direction)
+}
+
+function closePane() {
+  layoutStore.closeLeaf(props.leaf.id)
 }
 
 function updateTabTitle(tabId: string, title: string) {
