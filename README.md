@@ -1,62 +1,68 @@
-# Notes Server
+# Notes – Self-Hosted Notes & Planning Server
 
-A self-hosted notes and planning server with two main features:
-1. **Notes** - Create, edit, and manage text notes
-2. **Boards** - Trello-like kanban boards for task planning
-
-## Tech Stack
-
-- **Backend**: Rust (Actix-web) with PostgreSQL
-- **Frontend**: Vue 3 + TypeScript + Vite
-- **Deployment**: Kubernetes (k3s)
+A self-hosted productivity suite combining a rich-text note editor, Trello-style kanban boards, a calendar, and visual graph diagrams — all with per-user data isolation and Google SSO.
 
 ## Features
 
+### Notes
+- Rich-text editor powered by [Tiptap](https://tiptap.dev/) (bold, italic, underline, headings, lists, tables, code blocks, links, images)
+- Folder organisation with nested folders
+- Full-text search across all notes
+- Revision history with diff view
+- Attachments (file upload per note)
+- Print / export to new tab
+
+### Boards (Kanban)
+- Multiple boards with custom colours
+- Lists (columns) with drag-and-drop reordering
+- Cards with title, description, due dates, labels, and checklists
+- Drag-and-drop cards between lists
+
+### Calendar
+- Monthly calendar view
+- Events linked to board cards or standalone
+- Recurring event automations (interval-based triggers)
+
+### Graphs
+- Visual node-and-edge diagrams
+- Nodes can reference notes, boards, or cards
+- Free-form positioning
+
 ### Authentication
 - Email/password registration and login
-- Google OAuth SSO integration
-- JWT-based session management
-- Per-user data isolation (notes and boards are private to each user)
+- Google OAuth SSO
+- JWT session management
+- Per-user data isolation
 
-### Notes
-- Create and edit notes with title and content
-- Auto-save on blur
-- Notes list with search
-- Markdown support (planned)
+## Tech Stack
 
-### Boards (Trello-like)
-- Create multiple boards with custom colors
-- Add lists (columns) to boards
-- Create cards with:
-  - Title and description
-  - Due dates
-  - Labels
-- Drag and drop cards between lists (planned)
+| Layer | Technology |
+|---|---|
+| Backend | Rust · Actix-web 4 · SQLx |
+| Database | PostgreSQL 15 |
+| Frontend | Vue 3 · TypeScript · Vite · Tiptap · Pinia · VueDraggable |
+| Deployment | Docker Compose / Kubernetes (k3s) |
 
 ## Quick Start
 
-### Development
+### Local development
 
 ```bash
-# Start development servers
 ./dev.sh
 ```
 
-This starts:
-- Backend at http://localhost:8080
-- Frontend at http://localhost:3000
+- Backend: http://localhost:8080
+- Frontend: http://localhost:3000
 
 ### Docker Compose
 
 ```bash
-# Run with Docker Compose
-docker-compose up
+docker-compose up --build
 ```
 
-### Deploy to Kubernetes
+### Kubernetes (k3s)
 
 ```bash
-# Build and deploy
 make deploy
 ```
 
@@ -64,121 +70,97 @@ make deploy
 
 ```
 Notes/
-├── backend/               # Rust Actix-web API
+├── backend/                  # Rust Actix-web API
 │   ├── src/
-│   │   ├── main.rs       # Entry point
-│   │   ├── models.rs     # Data models
-│   │   ├── db/           # Database layer
-│   │   └── routes/       # API routes
-│   ├── Cargo.toml
-│   └── Dockerfile
-├── frontend/              # Vue 3 SPA
+│   │   ├── db/               # Database layer
+│   │   ├── models/           # Data models (notes, boards, cards, graphs, …)
+│   │   ├── routes/           # HTTP handlers
+│   │   │   ├── notes.rs
+│   │   │   ├── boards.rs
+│   │   │   ├── cards.rs
+│   │   │   ├── lists.rs
+│   │   │   ├── folders.rs
+│   │   │   ├── graphs.rs
+│   │   │   ├── automations.rs
+│   │   │   ├── reminders.rs
+│   │   │   ├── attachments.rs
+│   │   │   ├── auth.rs
+│   │   │   └── settings.rs
+│   │   └── main.rs
+│   └── Cargo.toml
+├── frontend/                 # Vue 3 SPA
 │   ├── src/
-│   │   ├── main.ts
-│   │   ├── App.vue
-│   │   ├── api/          # API client
-│   │   ├── router/       # Vue Router
-│   │   ├── types/        # TypeScript types
-│   │   └── views/        # Page components
-│   ├── package.json
-│   └── Dockerfile
-├── k8s/                   # Kubernetes manifests
-│   ├── namespace.yaml
-│   ├── backend-deployment.yaml
-│   ├── frontend-deployment.yaml
-│   └── frontend-ingressroute.yaml
+│   │   ├── views/            # Top-level page views
+│   │   ├── components/       # Feature components (editor, boards, calendar, graphs, …)
+│   │   ├── layouts/          # App shell layout
+│   │   ├── api/              # Typed API client
+│   │   ├── stores/           # Pinia state stores
+│   │   └── router/           # Vue Router
+│   └── package.json
+├── k8s/                      # Kubernetes manifests
 ├── docker-compose.yaml
 ├── Makefile
 ├── dev.sh
 └── deploy.sh
 ```
 
-## API Endpoints
+## API Overview
 
-### Authentication
-- `POST /api/auth/register` - Register with email/password
-- `POST /api/auth/login` - Login with email/password
-- `GET /api/auth/google/url` - Get Google OAuth URL
-- `POST /api/auth/google` - Exchange Google OAuth code for token
-- `GET /api/auth/me` - Get current user (requires auth)
+### Auth
+| Method | Path | Description |
+|---|---|---|
+| POST | `/api/auth/register` | Register with email/password |
+| POST | `/api/auth/login` | Login |
+| GET | `/api/auth/google/url` | Get Google OAuth URL |
+| POST | `/api/auth/google` | Exchange OAuth code for JWT |
+| GET | `/api/auth/me` | Current user |
 
 ### Notes
-- `GET /api/notes` - List all notes
-- `GET /api/notes/:id` - Get a note
-- `POST /api/notes` - Create a note
-- `PUT /api/notes/:id` - Update a note
-- `DELETE /api/notes/:id` - Delete a note
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/notes` | List notes |
+| POST | `/api/notes` | Create note |
+| GET/PUT/DELETE | `/api/notes/:id` | Get / update / delete note |
 
-### Boards
-- `GET /api/boards` - List all boards
-- `GET /api/boards/:id` - Get a board with lists and cards
-- `POST /api/boards` - Create a board
-- `PUT /api/boards/:id` - Update a board
-- `DELETE /api/boards/:id` - Delete a board
-
-### Lists
-- `GET /api/boards/:board_id/lists` - Get lists for a board
-- `POST /api/boards/:board_id/lists` - Create a list
-- `PUT /api/lists/:id` - Update a list
-- `DELETE /api/lists/:id` - Delete a list
-- `POST /api/lists/reorder` - Reorder lists
-
-### Cards
-- `GET /api/lists/:list_id/cards` - Get cards for a list
-- `GET /api/cards/:id` - Get a card
-- `POST /api/lists/:list_id/cards` - Create a card
-- `PUT /api/cards/:id` - Update a card
-- `DELETE /api/cards/:id` - Delete a card
-- `POST /api/cards/move` - Move card to another list
-- `POST /api/cards/reorder` - Reorder cards in a list
+### Boards & Cards
+| Method | Path | Description |
+|---|---|---|
+| GET/POST | `/api/boards` | List / create boards |
+| GET/PUT/DELETE | `/api/boards/:id` | Board CRUD |
+| POST | `/api/boards/:id/lists` | Create list |
+| POST | `/api/lists/:id/cards` | Create card |
+| POST | `/api/cards/move` | Move card between lists |
 
 ## Environment Variables
 
 ### Backend
-- `DATABASE_URL` - PostgreSQL connection string
-- `RUST_LOG` - Log level (default: info)
-- `JWT_SECRET` - Secret key for JWT signing (required)
-- `GOOGLE_CLIENT_ID` - Google OAuth client ID (optional, for Google SSO)
-- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret (optional, for Google SSO)
-- `APP_URL` - Application URL for OAuth callbacks (e.g., https://notes.example.com)
+
+| Variable | Default | Description |
+|---|---|---|
+| `DATABASE_URL` | local postgres | PostgreSQL connection string |
+| `JWT_SECRET` | *(insecure default)* | JWT signing secret — **change in production** |
+| `GOOGLE_CLIENT_ID` | – | Google OAuth client ID (optional) |
+| `GOOGLE_CLIENT_SECRET` | – | Google OAuth client secret (optional) |
+| `APP_URL` | `http://localhost:3000` | Base URL for OAuth callbacks |
+| `RUST_LOG` | `info` | Log level |
 
 ### Frontend
-- `VITE_API_URL` - Backend API URL (default: /api)
+
+| Variable | Default | Description |
+|---|---|---|
+| `VITE_API_URL` | `/api` | Backend API base URL |
 
 ## Google OAuth Setup (Optional)
 
-To enable Google OAuth:
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing
-3. Enable the Google+ API
-4. Go to Credentials → Create Credentials → OAuth Client ID
-5. Application type: Web application
-6. Add authorized redirect URI: `https://your-domain/auth/google/callback`
-7. Copy Client ID and Client Secret to your secrets
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → Credentials → Create OAuth 2.0 Client
+2. Application type: **Web application**
+3. Authorised redirect URI: `https://your-domain/auth/google/callback`
+4. Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in your environment / secrets
 
 ## Kubernetes Secrets
 
-Before deploying to Kubernetes, create secrets:
-
 ```bash
-# Edit k8s/secrets.yaml with your values
-kubectl apply -f k8s/secrets.yaml
-```
-
-## Development
-
-### Backend
-```bash
-cd backend
-cargo run
-```
-
-### Frontend
-```bash
-cd frontend
-npm install
-npm run dev
+kubectl apply -f k8s/secrets.yaml   # edit values first
 ```
 
 ## License
