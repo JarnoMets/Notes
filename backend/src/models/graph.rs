@@ -136,6 +136,7 @@ pub struct MoveGraphRequest {
 }
 
 /// Node type - what kind of node this is
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeType {
@@ -158,6 +159,7 @@ impl Default for NodeType {
 }
 
 /// Node shape for bubble nodes
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum NodeShape {
@@ -208,6 +210,7 @@ pub struct GraphNode {
 }
 
 impl GraphNode {
+    #[allow(dead_code)]
     pub fn new(
         graph_id: String,
         node_type: NodeType,
@@ -283,6 +286,7 @@ pub struct UpdateNodeRequest {
 }
 
 /// Edge/connection type
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EdgeType {
@@ -303,6 +307,7 @@ impl Default for EdgeType {
 }
 
 /// Edge line style
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum EdgeStyle {
@@ -336,6 +341,7 @@ pub struct GraphEdge {
 }
 
 impl GraphEdge {
+    #[allow(dead_code)]
     pub fn new(
         graph_id: String,
         source_node_id: String,
