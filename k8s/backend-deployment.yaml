@@ -24,7 +24,7 @@ spec:
         - name: RUST_LOG
           value: "info"
         - name: DATABASE_URL
-          value: "postgres://postgresuser:postgrespwd@postgres.postgres.svc.cluster.local:5432/notesdb"
+          value: "postgres://postgresuser:your-password-here@postgres.postgres.svc.cluster.local:5432/notesdb"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
