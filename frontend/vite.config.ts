@@ -10,6 +10,10 @@ export default defineConfig({
     }
   },
   publicDir: 'public',
+  test: {
+    environment: 'happy-dom',
+    include: ['src/**/*.spec.ts'],
+  },
   server: {
     port: 3000,
     proxy: {
