@@ -395,8 +395,13 @@ async function handleCardDelete() {
 }
 
 async function handleMoveCard(cardId: string, _from: string, to: string, pos: number) {
+  let position = pos
+  if (position === -1) {
+    const targetList = activeLists.value.find((l) => l.list.id === to)
+    position = targetList?.cards?.length ?? 0
+  }
   return withSync(async () => {
-    await cardsApi.move({ card_id: cardId, target_list_id: to, position: pos })
+    await cardsApi.move({ card_id: cardId, target_list_id: to, position })
     await fetchBoard()
   })
 }
