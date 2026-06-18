@@ -8,8 +8,43 @@ use crate::require_auth;
 
 use super::response::{created, internal_error_logged, no_content, not_found, ok, ok_status};
 
-pub async fn get_lists(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+async fn verify_board_ownership(
+    state: &web::Data<AppState>,
+    board_id: &str,
+    user_id: &str,
+) -> Result<(), actix_web::HttpResponse> {
+    match state.db.get_board(board_id, user_id).await {
+        Ok(_) => Ok(()),
+        Err(DbError::NotFound) => Err(not_found("Board")),
+        Err(e) => Err(internal_error_logged("Failed to verify board ownership", e)),
+    }
+}
+
+async fn verify_list_ownership(
+    state: &web::Data<AppState>,
+    list_id: &str,
+    user_id: &str,
+) -> Result<(), actix_web::HttpResponse> {
+    let list = match state.db.get_list(list_id).await {
+        Ok(list) => list,
+        Err(DbError::NotFound) => return Err(not_found("List")),
+        Err(e) => return Err(internal_error_logged("Failed to get list", e)),
+    };
+
+    verify_board_ownership(state, &list.board_id, user_id).await
+}
+
+pub async fn get_lists(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let board_id = path.into_inner();
+
+    if let Err(resp) = verify_board_ownership(&state, &board_id, &user_id).await {
+        return resp;
+    }
 
     match state.db.get_lists(&board_id).await {
         Ok(lists) => ok(lists),
@@ -19,10 +54,16 @@ pub async fn get_lists(state: web::Data<AppState>, path: web::Path<String>) -> i
 
 pub async fn create_list(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
     body: web::Json<CreateListRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let board_id = path.into_inner();
+
+    if let Err(resp) = verify_board_ownership(&state, &board_id, &user_id).await {
+        return resp;
+    }
 
     let position = match body.position {
         Some(p) => p,
@@ -42,10 +83,16 @@ pub async fn create_list(
 
 pub async fn update_list(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
     body: web::Json<UpdateListRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state
         .db
@@ -58,8 +105,17 @@ pub async fn update_list(
     }
 }
 
-pub async fn delete_list(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn delete_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.delete_list(&id).await {
         Ok(()) => no_content(),
@@ -70,16 +126,32 @@ pub async fn delete_list(state: web::Data<AppState>, path: web::Path<String>) ->
 
 pub async fn reorder_lists(
     state: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<ReorderListsRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
+
+    if let Err(resp) = verify_board_ownership(&state, &body.board_id, &user_id).await {
+        return resp;
+    }
+
     match state.db.reorder_lists(&body.board_id, &body.list_ids).await {
         Ok(()) => ok_status(),
         Err(e) => internal_error_logged("Failed to reorder lists", e),
     }
 }
 
-pub async fn archive_list(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn archive_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.archive_list(&id, true).await {
         Ok(list) => ok(list),
@@ -88,8 +160,17 @@ pub async fn archive_list(state: web::Data<AppState>, path: web::Path<String>) -
     }
 }
 
-pub async fn restore_list(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn restore_list(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.archive_list(&id, false).await {
         Ok(list) => ok(list),
