@@ -44,4 +44,13 @@ describe('dates util', () => {
   it('toApiIso returns undefined for invalid input', () => {
     expect(toApiIso('not-a-date')).toBeUndefined()
   })
+
+  it('normalizeForInput converts ISO timestamps to local datetime-local', () => {
+    const normalized = normalizeForInput('2025-12-01T09:30:00Z')
+    expect(normalized).toMatch(/^2025-12-01T\d{2}:\d{2}$/)
+  })
+
+  it('normalizeForInput returns undefined for invalid strings', () => {
+    expect(normalizeForInput('not-a-date')).toBeUndefined()
+  })
 })
