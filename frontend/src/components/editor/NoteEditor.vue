@@ -87,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { useNotesStore } from '@/stores/notes'
 import { notesApi } from '@/api'
 import { extractBBCodeReferences } from '@/utils/bbcode'
@@ -137,7 +137,19 @@ const removedAttachmentModal = ref({
   attachment: null as NoteAttachment | null
 })
 
+async function flushPendingSave() {
+  if (saveTimeout.value) {
+    clearTimeout(saveTimeout.value)
+    saveTimeout.value = null
+  }
+  if (note.value && isDirty.value) {
+    await saveNote()
+  }
+}
+
 async function loadNote() {
+  await flushPendingSave()
+
   if (!props.noteId) {
     note.value = null
     return
@@ -519,6 +531,10 @@ watch(() => props.noteId, loadNote, { immediate: true })
 
 onMounted(() => {
   // No menu handling needed anymore since it's in the header component
+})
+
+onUnmounted(() => {
+  void flushPendingSave()
 })
 </script>
 
