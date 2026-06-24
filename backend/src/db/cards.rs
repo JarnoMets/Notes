@@ -264,8 +264,9 @@ impl Database {
     }
 
     pub async fn get_card_with_attachments(&self, id: &str, user_id: &str) -> DbResult<CardWithAttachments> {
-        // First verify ownership
-        self.verify_card_ownership(id, user_id).await?;
+        if !self.verify_card_ownership(id, user_id).await? {
+            return Err(DbError::NotFound);
+        }
 
         let card = self.get_card(id).await?;
         let attachments = self.get_card_attachments(id).await?;
