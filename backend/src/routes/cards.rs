@@ -12,8 +12,55 @@ use crate::require_auth;
 
 use super::response::{created, internal_error_logged, no_content, not_found, ok, ok_status};
 
-pub async fn get_cards(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+async fn verify_board_ownership(
+    state: &web::Data<AppState>,
+    board_id: &str,
+    user_id: &str,
+) -> Result<(), actix_web::HttpResponse> {
+    match state.db.get_board(board_id, user_id).await {
+        Ok(_) => Ok(()),
+        Err(DbError::NotFound) => Err(not_found("Board")),
+        Err(e) => Err(internal_error_logged("Failed to verify board ownership", e)),
+    }
+}
+
+async fn verify_list_ownership(
+    state: &web::Data<AppState>,
+    list_id: &str,
+    user_id: &str,
+) -> Result<(), actix_web::HttpResponse> {
+    let list = match state.db.get_list(list_id).await {
+        Ok(list) => list,
+        Err(DbError::NotFound) => return Err(not_found("List")),
+        Err(e) => return Err(internal_error_logged("Failed to get list", e)),
+    };
+
+    verify_board_ownership(state, &list.board_id, user_id).await
+}
+
+async fn verify_card_ownership(
+    state: &web::Data<AppState>,
+    card_id: &str,
+    user_id: &str,
+) -> Result<(), actix_web::HttpResponse> {
+    match state.db.verify_card_ownership(card_id, user_id).await {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(not_found("Card")),
+        Err(e) => Err(internal_error_logged("Failed to verify card ownership", e)),
+    }
+}
+
+pub async fn get_cards(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let list_id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &list_id, &user_id).await {
+        return resp;
+    }
 
     match state.db.get_cards(&list_id).await {
         Ok(cards) => ok(cards),
@@ -34,10 +81,16 @@ pub async fn get_card(state: web::Data<AppState>, req: HttpRequest, path: web::P
 
 pub async fn create_card(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
     body: web::Json<CreateCardRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let list_id = path.into_inner();
+
+    if let Err(resp) = verify_list_ownership(&state, &list_id, &user_id).await {
+        return resp;
+    }
 
     let position = match body.position {
         Some(p) => p,
@@ -79,10 +132,22 @@ pub async fn create_card(
 
 pub async fn update_card(
     state: web::Data<AppState>,
+    req: HttpRequest,
     path: web::Path<String>,
     body: web::Json<UpdateCardRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_card_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
+
+    if let Some(ref list_id) = body.list_id {
+        if let Err(resp) = verify_list_ownership(&state, list_id, &user_id).await {
+            return resp;
+        }
+    }
 
     // Handle due_date: if it's provided in the request, pass Some(value), otherwise None
     let due_date_update = body.due_date.map(Some);
@@ -108,8 +173,17 @@ pub async fn update_card(
     }
 }
 
-pub async fn delete_card(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn delete_card(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_card_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.delete_card(&id).await {
         Ok(()) => no_content(),
@@ -120,8 +194,18 @@ pub async fn delete_card(state: web::Data<AppState>, path: web::Path<String>) ->
 
 pub async fn move_card(
     state: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<MoveCardRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
+
+    if let Err(resp) = verify_card_ownership(&state, &body.card_id, &user_id).await {
+        return resp;
+    }
+    if let Err(resp) = verify_list_ownership(&state, &body.target_list_id, &user_id).await {
+        return resp;
+    }
+
     match state
         .db
         .move_card(&body.card_id, &body.target_list_id, body.position)
@@ -148,16 +232,32 @@ pub async fn move_card(
 
 pub async fn reorder_cards(
     state: web::Data<AppState>,
+    req: HttpRequest,
     body: web::Json<ReorderCardsRequest>,
 ) -> impl Responder {
+    let user_id = require_auth!(req, state);
+
+    if let Err(resp) = verify_list_ownership(&state, &body.list_id, &user_id).await {
+        return resp;
+    }
+
     match state.db.reorder_cards(&body.list_id, &body.card_ids).await {
         Ok(()) => ok_status(),
         Err(e) => internal_error_logged("Failed to reorder cards", e),
     }
 }
 
-pub async fn archive_card(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn archive_card(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_card_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.archive_card(&id, true).await {
         Ok(card) => ok(card),
@@ -166,8 +266,17 @@ pub async fn archive_card(state: web::Data<AppState>, path: web::Path<String>) -
     }
 }
 
-pub async fn restore_card(state: web::Data<AppState>, path: web::Path<String>) -> impl Responder {
+pub async fn restore_card(
+    state: web::Data<AppState>,
+    req: HttpRequest,
+    path: web::Path<String>,
+) -> impl Responder {
+    let user_id = require_auth!(req, state);
     let id = path.into_inner();
+
+    if let Err(resp) = verify_card_ownership(&state, &id, &user_id).await {
+        return resp;
+    }
 
     match state.db.archive_card(&id, false).await {
         Ok(card) => ok(card),
