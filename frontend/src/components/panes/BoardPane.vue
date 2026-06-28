@@ -122,7 +122,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
-import { KanbanBoard, BoardHeader, LabelsPanel, AutomationsPanel, ArchivePanel } from '../boards'
+import {
+  KanbanBoard,
+  BoardHeader,
+  LabelsPanel,
+  AutomationsPanel,
+  ArchivePanel,
+  CardEditModal,
+} from '../boards'
+import PromptModal from '../modals/PromptModal.vue'
+import ConfirmModal from '../modals/ConfirmModal.vue'
+import { boardsApi, listsApi, cardsApi } from '@/api'
+import type { BoardWithLists, Card } from '@/types'
+import { useSync } from '@/composables/useSync'
+import { toApiIso } from '@/utils/dates'
+import logger from '@/utils/logger'
 
 const props = defineProps<{
   boardId?: string
